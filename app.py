@@ -61,39 +61,15 @@ def validate_public_url(url):
 
 @app.route("/")
 def home():
-    return """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>SocialScope</title>
-        <style>
-            body {
-                background: #0b1020;
-                color: #e5e7eb;
-                font-family: Arial, sans-serif;
-                max-width: 700px;
-                margin: 60px auto;
-                padding: 20px;
-            }
-            h1 { color: #7c9cff; }
-            .card {
-                background: #151c30;
-                padding: 24px;
-                border-radius: 14px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>SocialScope</h1>
-            <p>Your public-web analysis tool is online.</p>
-            <p>Homepage loaded successfully.</p>
-        </div>
-    </body>
-    </html>
-    """
+    from pathlib import Path
+    from flask import render_template_string
+
+    html_file = Path(__file__).parent / "templates" / "index.html"
+
+    if not html_file.is_file():
+        return "SocialScope: index.html not found in templates/", 500
+
+    return render_template_string(html_file.read_text(encoding="utf-8"))
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
