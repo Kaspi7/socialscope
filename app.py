@@ -6,7 +6,11 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
 
-app = Flask(__name__)
+import os
+app = Flask(
+    __name__,
+    template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+)
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
 
 @app.route("/health")
