@@ -9,7 +9,10 @@ from flask import Flask, jsonify, render_template, request
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
 
-
+@app.route("/health")
+def health():
+    return {"status": "ok"}, 200
+    
 def validate_public_url(url):
     try:
         parsed = urlparse(url)
