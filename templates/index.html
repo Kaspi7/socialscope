@@ -3,99 +3,343 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SocialScope | Digital Footprint Mapper</title>
+<title>SocialScope | OSINT Workspace</title>
 <style>
-:root{color-scheme:dark;--bg:#090d16;--panel:#111827;--border:#263449;--accent:#56e0b5;--muted:#9aa9bd}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:#edf4ff;font:15px system-ui,sans-serif}
-header{padding:24px 18px;border-bottom:1px solid var(--border);background:#0d1421}
-header h1{margin:0;color:var(--accent);letter-spacing:1px}
-header p{color:var(--muted);margin:6px 0 0}
-main{max-width:900px;margin:24px auto;padding:0 14px}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px}
-h2{font-size:18px;margin-top:0}
-label{display:block;margin:12px 0 6px;color:#c4d1e4}
-input,button{font:inherit;border-radius:8px;padding:12px;width:100%}
-input{background:#080e18;border:1px solid var(--border);color:white}
-button{margin-top:12px;background:var(--accent);color:#06120f;border:0;font-weight:700;cursor:pointer}
-button:disabled{opacity:.6}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#b8f8e5}
-.muted{color:var(--muted);font-size:13px}
-#result{display:none}
-footer{text-align:center;color:var(--muted);padding:20px}
+:root {
+  --bg:#090d16; --panel:#111827; --panel2:#172033;
+  --border:#263248; --text:#e7edf7; --muted:#94a3b8;
+  --accent:#8b9dff; --green:#65d6ad;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,sans-serif;
+}
+button,input,textarea { font:inherit; }
+button,a { -webkit-tap-highlight-color:transparent; }
+a { color:var(--accent); overflow-wrap:anywhere; }
+header {
+  padding:20px; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; flex-wrap:wrap;
+}
+.brand { font-size:22px; font-weight:800; letter-spacing:-.6px; }
+.brand span { color:var(--accent); }
+.status { color:var(--green); font-size:12px; }
+.layout { display:grid; grid-template-columns:220px minmax(0,1fr); }
+nav { padding:20px 12px; border-right:1px solid var(--border); min-height:85vh; }
+.navbtn {
+  display:block; width:100%; text-align:left; margin-bottom:7px;
+  padding:12px; border:1px solid transparent; border-radius:9px;
+  color:var(--muted); background:transparent; cursor:pointer;
+}
+.navbtn.active,.navbtn:hover { background:var(--panel2); color:var(--text); border-color:var(--border); }
+main { padding:25px; max-width:1100px; width:100%; }
+h1 { font-size:27px; margin:0 0 5px; }
+h2 { font-size:18px; margin:0 0 12px; }
+p { color:var(--muted); }
+.sub { margin-top:0; }
+.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:22px 0; }
+.card,.panel {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:13px; padding:18px; min-width:0;
+}
+.metric { font-size:25px; font-weight:750; }
+.small { font-size:12px; color:var(--muted); }
+.panel { margin-bottom:16px; }
+label { display:block; margin:12px 0 6px; color:#c7d2e4; font-size:13px; }
+input,textarea {
+  width:100%; background:#0b1220; color:var(--text);
+  border:1px solid var(--border); border-radius:8px; padding:12px;
+}
+input:focus,textarea:focus { outline:1px solid var(--accent); }
+.actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; }
+.btn {
+  padding:10px 14px; border:1px solid var(--border); border-radius:8px;
+  background:var(--panel2); color:var(--text); cursor:pointer;
+}
+.btn.primary { background:var(--accent); color:#080d19; border-color:var(--accent); font-weight:700; }
+.btn:disabled { opacity:.5; }
+.note { font-size:12px; color:var(--muted); }
+.result { white-space:pre-wrap; overflow-wrap:anywhere; margin-top:14px; }
+.profile-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:15px; }
+.profile {
+  border:1px solid var(--border); background:#0b1220; border-radius:9px;
+  padding:13px; min-width:0;
+}
+.profile strong { display:block; margin-bottom:5px; }
+.profile a { font-size:13px; }
+.hidden { display:none !important; }
+.finding {
+  padding:13px 0; border-bottom:1px solid var(--border);
+  overflow-wrap:anywhere;
+}
+.finding:last-child { border-bottom:0; }
+.tag { display:inline-block; border:1px solid var(--border); border-radius:20px; padding:2px 8px; font-size:11px; color:var(--green); }
+footer { padding:20px; border-top:1px solid var(--border); text-align:center; color:var(--muted); font-size:12px; }
+@media(max-width:680px) {
+  .layout { grid-template-columns:1fr; }
+  nav { min-height:auto; border-right:0; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; padding:10px; }
+  .navbtn { white-space:nowrap; width:auto; margin:0; padding:9px 12px; }
+  main { padding:17px 13px; }
+  .cards { grid-template-columns:1fr; }
+  .profile-list { grid-template-columns:1fr; }
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>SocialScope</h1>
-  <p>Public-web research · Digital footprint mapping</p>
+  <div class="brand">Social<span>Scope</span></div>
+  <div class="status">● WORKSPACE READY</div>
 </header>
+
+<div class="layout">
+<nav aria-label="Tools">
+  <button class="navbtn active" data-page="overview">⌂ Overview</button>
+  <button class="navbtn" data-page="username">◎ Username Search</button>
+  <button class="navbtn" data-page="webpage">⌕ Webpage Analyzer</button>
+  <button class="navbtn" data-page="findings">▤ Findings & Reports</button>
+</nav>
+
 <main>
-  <section class="panel">
-    <h2>Public webpage analyzer</h2>
-    <p class="muted">Analyze a publicly accessible webpage's title, description and links. Only analyze pages you're authorized to research.</p>
-    <form id="analyzer">
-      <label for="url">Webpage URL</label>
-      <input id="url" type="url" placeholder="https://example.com" required>
-      <button id="submit" type="submit">Analyze webpage</button>
+<section id="overview" class="page">
+  <h1>OSINT Workspace</h1>
+  <p class="sub">Organize public digital-footprint research in one place.</p>
+  <div class="cards">
+    <div class="card"><div class="small">TOOLS</div><div class="metric">03</div><div class="small">Workspace modules</div></div>
+    <div class="card"><div class="small">SAVED FINDINGS</div><div class="metric" id="findingCount">0</div><div class="small">In this browser session</div></div>
+    <div class="card"><div class="small">REPORT EXPORT</div><div class="metric">JSON / CSV</div><div class="small">Download your findings</div></div>
+  </div>
+  <div class="panel">
+    <h2>Start researching</h2>
+    <p>Search for public profile URLs associated with a username, inspect an accessible webpage, or review and export saved findings.</p>
+    <div class="actions">
+      <button class="btn primary" data-goto="username">Username Search</button>
+      <button class="btn" data-goto="webpage">Analyze a Webpage</button>
+      <button class="btn" data-goto="findings">Open Reports</button>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Research boundaries</h2>
+    <p class="note">Use public information or systems you are authorized to assess. Profile links are leads, not proof of identity or account existence. Do not use this tool to bypass authentication, access controls, or platform restrictions.</p>
+  </div>
+</section>
+
+<section id="username" class="page hidden">
+  <h1>Username Search</h1>
+  <p class="sub">Generate profile links on selected platforms for manual public review.</p>
+  <div class="panel">
+    <label for="usernameInput">Username or handle</label>
+    <input id="usernameInput" maxlength="100" placeholder="e.g. example_user" autocomplete="off">
+    <p class="note">Enter the handle only, without a URL. Results are candidate profile links, not verified matches.</p>
+    <div class="actions">
+      <button class="btn primary" id="searchUsername">Generate Profile Links</button>
+      <button class="btn" id="saveUsername">Save Search as Finding</button>
+    </div>
+    <div id="profileResults" class="profile-list"></div>
+    <div id="usernameMessage" class="result"></div>
+  </div>
+</section>
+
+<section id="webpage" class="page hidden">
+  <h1>Public Webpage Analyzer</h1>
+  <p class="sub">Extract basic metadata and links from an accessible public HTML page.</p>
+  <div class="panel">
+    <form id="analyzeForm">
+      <label for="urlInput">Public webpage URL</label>
+      <input id="urlInput" type="url" maxlength="2048" placeholder="https://example.com" required>
+      <div class="actions">
+        <button class="btn primary" id="analyzeButton" type="submit">Analyze Page</button>
+      </div>
     </form>
-  </section>
+    <div id="analysisMessage" class="result" role="status"></div>
+    <div id="analysisResults" class="hidden">
+      <div class="finding"><strong>Page title</strong><div id="pageTitle"></div></div>
+      <div class="finding"><strong>Description</strong><div id="pageDescription"></div></div>
+      <div class="finding"><strong>Extracted links</strong><div id="pageLinks"></div></div>
+      <div class="actions"><button class="btn" id="saveAnalysis">Save Analysis to Findings</button></div>
+    </div>
+  </div>
+</section>
 
-  <section class="panel" id="result">
-    <h2>Analysis results</h2>
-    <pre id="output"></pre>
-    <button id="download" type="button">Download JSON report</button>
-  </section>
-
-  <section class="panel">
-    <h2>About this tool</h2>
-    <p>SocialScope is a developing digital-footprint research tool. This version analyzes individual public webpages. Username checks and interactive relationship graphs are not connected yet.</p>
-    <p class="muted">Results can be incomplete or inaccurate. Respect privacy, platform rules and applicable law.</p>
-  </section>
+<section id="findings" class="page hidden">
+  <h1>Findings & Reports</h1>
+  <p class="sub">Review items you have saved during this browser session.</p>
+  <div class="panel">
+    <div class="actions">
+      <button class="btn primary" id="exportJson">Export JSON</button>
+      <button class="btn" id="exportCsv">Export CSV</button>
+      <button class="btn" id="clearFindings">Clear Findings</button>
+    </div>
+    <div id="findingsList" class="result"></div>
+  </div>
+  <p class="note">Findings are held in this page's memory. Refreshing or closing the page clears them. Export reports before leaving.</p>
+</section>
 </main>
-<footer>SocialScope · Initial web version</footer>
-<script>
-const form = document.getElementById("analyzer");
-const button = document.getElementById("submit");
-const result = document.getElementById("result");
-const output = document.getElementById("output");
-let report = null;
+</div>
 
-form.addEventListener("submit", async (event) => {
+<footer>SocialScope · Public-information research workspace</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+let findings = [];
+let latestAnalysis = null;
+let latestUsername = null;
+
+const platforms = [
+  {name:"GitHub", url:u=>`https://github.com/${encodeURIComponent(u)}`},
+  {name:"Reddit", url:u=>`https://www.reddit.com/user/${encodeURIComponent(u)}/`},
+  {name:"YouTube", url:u=>`https://www.youtube.com/@${encodeURIComponent(u)}`},
+  {name:"TikTok", url:u=>`https://www.tiktok.com/@${encodeURIComponent(u)}`},
+  {name:"Instagram", url:u=>`https://www.instagram.com/${encodeURIComponent(u)}/`},
+  {name:"Pinterest", url:u=>`https://www.pinterest.com/${encodeURIComponent(u)}/`},
+  {name:"Twitch", url:u=>`https://www.twitch.tv/${encodeURIComponent(u)}`},
+  {name:"Medium", url:u=>`https://medium.com/@${encodeURIComponent(u)}`},
+  {name:"X", url:u=>`https://x.com/${encodeURIComponent(u)}`}
+];
+
+function go(page) {
+  document.querySelectorAll(".page").forEach(el=>el.classList.toggle("hidden",el.id!==page));
+  document.querySelectorAll(".navbtn").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
+  if(page==="findings") renderFindings();
+}
+document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.goto)));
+
+function addFinding(type, data) {
+  findings.unshift({type, saved_at:new Date().toISOString(), ...data});
+  $("findingCount").textContent = findings.length;
+  renderFindings();
+}
+
+function validHandle(value) {
+  return /^[a-zA-Z0-9._-]{1,100}$/.test(value);
+}
+
+$("searchUsername").addEventListener("click",()=>{
+  const username=$("usernameInput").value.trim().replace(/^@/,"");
+  const results=$("profileResults");
+  results.replaceChildren();
+  $("usernameMessage").textContent="";
+  latestUsername=null;
+
+  if(!validHandle(username)) {
+    $("usernameMessage").textContent="Enter a handle using letters, numbers, dots, underscores or hyphens.";
+    return;
+  }
+
+  latestUsername={username, profiles:platforms.map(p=>({platform:p.name,url:p.url(username)}))};
+  latestUsername.profiles.forEach(p=>{
+    const card=document.createElement("div"); card.className="profile";
+    const name=document.createElement("strong"); name.textContent=p.platform;
+    const link=document.createElement("a"); link.href=p.url; link.target="_blank";
+    link.rel="noopener noreferrer"; link.textContent="Open candidate profile ↗";
+    card.append(name,link); results.append(card);
+  });
+  $("usernameMessage").textContent="Generated "+platforms.length+" candidate links. Open them manually to assess whether they are accessible and relevant.";
+});
+
+$("saveUsername").addEventListener("click",()=>{
+  if(!latestUsername) {
+    $("usernameMessage").textContent="Generate profile links first.";
+    return;
+  }
+  addFinding("username_search",latestUsername);
+  $("usernameMessage").textContent="Search saved to Findings.";
+});
+
+$("analyzeForm").addEventListener("submit",async event=>{
   event.preventDefault();
-  button.disabled = true;
-  button.textContent = "Analyzing...";
-  result.style.display = "block";
-  output.textContent = "Contacting SocialScope server...";
+  const url=$("urlInput").value.trim();
+  const button=$("analyzeButton");
+  $("analysisMessage").textContent="Analyzing public webpage…";
+  $("analysisResults").classList.add("hidden");
+  button.disabled=true;
+  latestAnalysis=null;
+
   try {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({url: document.getElementById("url").value.trim()})
+    const response=await fetch("/api/analyze",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({url})
     });
-    report = await response.json();
-    if (!response.ok) throw new Error(report.error || "Request failed");
-    output.textContent = JSON.stringify(report, null, 2);
-  } catch (error) {
-    output.textContent = "Error: " + error.message;
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||"Analysis failed.");
+    latestAnalysis=data;
+    $("pageTitle").textContent=data.title||"(No title found)";
+    $("pageDescription").textContent=data.description||"(No description found)";
+    const links=$("pageLinks"); links.replaceChildren();
+    (data.links||[]).forEach(href=>{
+      const line=document.createElement("div");
+      const a=document.createElement("a");
+      a.href=href; a.textContent=href; a.target="_blank";
+      a.rel="noopener noreferrer";
+      line.append(a); links.append(line);
+    });
+    $("analysisMessage").textContent="Analysis complete.";
+    $("analysisResults").classList.remove("hidden");
+  } catch(error) {
+    $("analysisMessage").textContent="Error: "+error.message;
   } finally {
-    button.disabled = false;
-    button.textContent = "Analyze webpage";
+    button.disabled=false;
   }
 });
 
-document.getElementById("download").addEventListener("click", () => {
-  if (!report) return;
-  const blob = new Blob([JSON.stringify(report, null, 2)], {
-    type: "application/json"
+$("saveAnalysis").addEventListener("click",()=>{
+  if(!latestAnalysis) return;
+  addFinding("webpage_analysis",latestAnalysis);
+  $("analysisMessage").textContent="Analysis saved to Findings.";
+});
+
+function renderFindings() {
+  const list=$("findingsList"); list.replaceChildren();
+  if(!findings.length) {
+    list.textContent="No saved findings yet.";
+    return;
+  }
+  findings.forEach((item,index)=>{
+    const div=document.createElement("div"); div.className="finding";
+    const title=document.createElement("strong");
+    title.textContent=`${index+1}. ${item.type.replaceAll("_"," ")} `;
+    const tag=document.createElement("span"); tag.className="tag"; tag.textContent="Saved";
+    const detail=document.createElement("div"); detail.className="small";
+    detail.textContent=item.username ? "Username: "+item.username : (item.url||"Webpage result");
+    const remove=document.createElement("button"); remove.className="btn";
+    remove.textContent="Remove"; remove.style.marginTop="8px";
+    remove.addEventListener("click",()=>{
+      findings.splice(index,1);
+      $("findingCount").textContent=findings.length;
+      renderFindings();
+    });
+    div.append(title,tag,detail,remove); list.append(div);
   });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "socialscope-report.json";
-  link.click();
-  URL.revokeObjectURL(link.href);
+}
+
+function download(filename, content, mime) {
+  const blob=new Blob([content],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$("exportJson").addEventListener("click",()=>{
+  download("socialscope-report.json",JSON.stringify(findings,null,2),"application/json");
+});
+$("exportCsv").addEventListener("click",()=>{
+  const quote=value=>'"'+String(value??"").replaceAll('"','""')+'"';
+  const rows=[["type","saved_at","username","url","title","description","profiles","links"]];
+  findings.forEach(f=>rows.push([
+    f.type,f.saved_at,f.username||"",f.url||"",f.title||"",f.description||"",
+    (f.profiles||[]).map(p=>p.platform+": "+p.url).join(" | "),
+    (f.links||[]).join(" | ")
+  ]));
+  download("socialscope-report.csv",rows.map(r=>r.map(quote).join(",")).join("\r\n"),"text/csv;charset=utf-8");
+});
+$("clearFindings").addEventListener("click",()=>{
+  if(confirm("Clear all findings from this session?")) {
+    findings=[]; $("findingCount").textContent="0"; renderFindings();
+  }
 });
 </script>
 </body>
-</html>
-  
+  </html>
+    
