@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SocialScope | Digital Footprint Mapper</title>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--panel:#111827;--border:#263449;--accent:#56e0b5;--muted:#9aa9bd}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#edf4ff;font:15px system-ui,sans-serif}
+header{padding:24px 18px;border-bottom:1px solid var(--border);background:#0d1421}
+header h1{margin:0;color:var(--accent);letter-spacing:1px}
+header p{color:var(--muted);margin:6px 0 0}
+main{max-width:900px;margin:24px auto;padding:0 14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{font-size:18px;margin-top:0}
+label{display:block;margin:12px 0 6px;color:#c4d1e4}
+input,button{font:inherit;border-radius:8px;padding:12px;width:100%}
+input{background:#080e18;border:1px solid var(--border);color:white}
+button{margin-top:12px;background:var(--accent);color:#06120f;border:0;font-weight:700;cursor:pointer}
+button:disabled{opacity:.6}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#b8f8e5}
+.muted{color:var(--muted);font-size:13px}
+#result{display:none}
+footer{text-align:center;color:var(--muted);padding:20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SocialScope</h1>
+  <p>Public-web research · Digital footprint mapping</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>Public webpage analyzer</h2>
+    <p class="muted">Analyze a publicly accessible webpage's title, description and links. Only analyze pages you're authorized to research.</p>
+    <form id="analyzer">
+      <label for="url">Webpage URL</label>
+      <input id="url" type="url" placeholder="https://example.com" required>
+      <button id="submit" type="submit">Analyze webpage</button>
+    </form>
+  </section>
+
+  <section class="panel" id="result">
+    <h2>Analysis results</h2>
+    <pre id="output"></pre>
+    <button id="download" type="button">Download JSON report</button>
+  </section>
+
+  <section class="panel">
+    <h2>About this tool</h2>
+    <p>SocialScope is a developing digital-footprint research tool. This version analyzes individual public webpages. Username checks and interactive relationship graphs are not connected yet.</p>
+    <p class="muted">Results can be incomplete or inaccurate. Respect privacy, platform rules and applicable law.</p>
+  </section>
+</main>
+<footer>SocialScope · Initial web version</footer>
+<script>
+const form = document.getElementById("analyzer");
+const button = document.getElementById("submit");
+const result = document.getElementById("result");
+const output = document.getElementById("output");
+let report = null;
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  button.disabled = true;
+  button.textContent = "Analyzing...";
+  result.style.display = "block";
+  output.textContent = "Contacting SocialScope server...";
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({url: document.getElementById("url").value.trim()})
+    });
+    report = await response.json();
+    if (!response.ok) throw new Error(report.error || "Request failed");
+    output.textContent = JSON.stringify(report, null, 2);
+  } catch (error) {
+    output.textContent = "Error: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Analyze webpage";
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  if (!report) return;
+  const blob = new Blob([JSON.stringify(report, null, 2)], {
+    type: "application/json"
+  });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "socialscope-report.json";
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+</script>
+</body>
+</html>
+  
