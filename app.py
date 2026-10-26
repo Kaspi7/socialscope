@@ -61,15 +61,8 @@ def validate_public_url(url):
 
 @app.route("/")
 def home():
-    from pathlib import Path
-    from flask import render_template_string
+    return render_template("index.html")
 
-    html_file = Path(__file__).parent / "templates" / "index.html"
-
-    if not html_file.is_file():
-        return "SocialScope: index.html not found in templates/", 500
-
-    return render_template_string(html_file.read_text(encoding="utf-8"))
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
