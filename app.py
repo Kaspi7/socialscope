@@ -143,6 +143,21 @@ def analyze():
             "error": "Could not retrieve that page."
         }), 400
 
+@app.route("/debug-files")
+def debug_files():
+    from pathlib import Path
+
+    root = Path(__file__).parent
+    return {
+        "app_directory": str(root),
+        "root_files": sorted(p.name for p in root.iterdir()),
+        "templates_exists": (root / "templates").is_dir(),
+        "template_files": (
+            sorted(p.name for p in (root / "templates").iterdir())
+            if (root / "templates").is_dir()
+            else []
+        )
+    }
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
