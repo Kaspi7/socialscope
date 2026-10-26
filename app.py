@@ -59,11 +59,41 @@ def validate_public_url(url):
     except (ValueError, OSError):
         return None
 
-
 @app.route("/")
 def home():
-    return render_template("index.html")
-
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>SocialScope</title>
+        <style>
+            body {
+                background: #0b1020;
+                color: #e5e7eb;
+                font-family: Arial, sans-serif;
+                max-width: 700px;
+                margin: 60px auto;
+                padding: 20px;
+            }
+            h1 { color: #7c9cff; }
+            .card {
+                background: #151c30;
+                padding: 24px;
+                border-radius: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>SocialScope</h1>
+            <p>Your public-web analysis tool is online.</p>
+            <p>Homepage loaded successfully.</p>
+        </div>
+    </body>
+    </html>
+    """
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
