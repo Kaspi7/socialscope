@@ -1,60 +1,135 @@
-from flask import Flask, render_template, request, jsonify
-import requests
-from bs4 import BeautifulSoup
+import ipaddress
+import socket
 from urllib.parse import urlparse
 
+import requests
+from bs4 import BeautifulSoup
+from flask import Flask, jsonify, render_template, request
+
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
+
+
+def validate_public_url(url):
+    try:
+        parsed = urlparse(url)
+
+        if parsed.scheme not in ("http", "https"):
+            return None
+
+        if not parsed.hostname or parsed.username or parsed.password:
+            return None
+
+        if parsed.port not in (None, 80, 443):
+            return None
+
+        host = parsed.hostname.rstrip(".").lower()
+
+        if host == "localhost" or host.endswith(
+            (".localhost", ".local", ".internal")
+        ):
+            return None
+
+        # Reject literal private, loopback and reserved IP addresses.
+        try:
+            ip = ipaddress.ip_address(host)
+            if not ip.is_global:
+                return None
+        except ValueError:
+            # Hostname: verify every resolved address is public.
+            addresses = socket.getaddrinfo(
+                host, parsed.port or (443 if parsed.scheme == "https" else 80),
+                type=socket.SOCK_STREAM
+            )
+            if not addresses:
+                return None
+
+            for address in addresses:
+                if not ipaddress.ip_address(address[4][0]).is_global:
+                    return None
+
+        return parsed
+    except (ValueError, OSError):
+        return None
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
+
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     data = request.get_json(silent=True) or {}
     url = data.get("url", "").strip()
 
-    if not url:
-        return jsonify({"error": "Enter a public webpage URL."}), 400
+    if len(url) > 2048:
+        return jsonify({"error": "URL is too long."}), 400
 
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        return jsonify({"error": "Enter a valid HTTP or HTTPS URL."}), 400
-
-    # Restrict requests to public hostnames to reduce SSRF risk.
-    host = parsed.hostname.lower()
-    if host in ("localhost",) or host.endswith(".localhost") or host.endswith(".local"):
-        return jsonify({"error": "Local addresses are not allowed."}), 400
+    parsed = validate_public_url(url)
+    if not parsed:
+        return jsonify({
+            "error": "Invalid URL or non-public address blocked."
+        }), 400
 
     try:
-        response = requests.get(
+        # Avoid automatic redirects to unvalidated destinations.
+        with requests.get(
             url,
-            timeout=8,
-            headers={"User-Agent": "SocialScope/1.0 (public-page analyzer)"},
-            allow_redirects=False
-        )
-        response.raise_for_status()
+            timeout=(3, 6),
+            headers={"User-Agent": "SocialScope/1.0"},
+            allow_redirects=False,
+            stream=True
+        ) as response:
+            if 300 <= response.status_code < 400:
+                return jsonify({
+                    "error": "Redirect blocked. Enter the final public URL."
+                }), 400
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        title = soup.title.get_text(" ", strip=True) if soup.title else "(No title)"
-        description = soup.find("meta", attrs={"name": "description"})
-        description = description.get("content", "") if description else ""
+            response.raise_for_status()
+
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "text/html" not in content_type:
+                return jsonify({
+                    "error": "This version analyzes HTML webpages only."
+                }), 400
+
+            chunks = []
+            total = 0
+            for chunk in response.iter_content(8192):
+                total += len(chunk)
+                if total > 1_000_000:
+                    return jsonify({
+                        "error": "Page is too large to analyze."
+                    }), 400
+                chunks.append(chunk)
+
+            html = b"".join(chunks).decode(
+                response.encoding or "utf-8", errors="replace"
+            )
+
+        soup = BeautifulSoup(html, "html.parser")
+        title = soup.title.get_text(" ", strip=True) if soup.title else ""
+        meta = soup.find("meta", attrs={"name": "description"})
+        description = meta.get("content", "")[:1000] if meta else ""
 
         links = [
-            a.get("href") for a in soup.find_all("a", href=True)
-        ][:50]
+            a.get("href", "")[:2048]
+            for a in soup.find_all("a", href=True)[:50]
+        ]
 
         return jsonify({
             "url": url,
-            "status_code": response.status_code,
             "title": title,
             "description": description,
             "links": links
         })
-    except requests.RequestException:
+
+    except (requests.RequestException, OSError, UnicodeError):
         return jsonify({
-            "error": "Could not retrieve that page. It may block automated requests."
+            "error": "Could not retrieve that page."
         }), 400
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
