@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>// socialscope // SYSTEM_OSINT_NODE</title>
+    <title>// socialscope // COMPREHENSIVE_OSINT</title>
     <script type="text/javascript" src="https://unpkg.com"></script>
     <style>
         :root {
@@ -15,64 +15,17 @@
             --text-color: #94a3b8;
             --border-color: #1e293b;
         }
-        body { 
-            font-family: 'Courier New', Courier, monospace; 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            padding: 20px; 
-            margin: 0; 
-        }
-        .terminal-container { 
-            max-width: 1550px; 
-            margin: 0 auto; 
-            background: var(--panel-color); 
-            padding: 25px; 
-            border-radius: 4px; 
-            border: 1px solid #14532d; 
-            box-shadow: 0 0 30px rgba(0, 255, 102, 0.03);
-        }
-        .header {
-            border-bottom: 2px solid #14532d;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        body { font-family: 'Courier New', Courier, monospace; background-color: var(--bg-color); color: var(--text-color); padding: 20px; margin: 0; }
+        .terminal-container { max-width: 1550px; margin: 0 auto; background: var(--panel-color); padding: 25px; border: 1px solid #14532d; }
+        .header { border-bottom: 2px solid #14532d; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { color: var(--neon-green); margin: 0; font-size: 26px; text-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
         .input-matrix { display: flex; gap: 10px; margin-bottom: 25px; }
-        input[type="text"] { 
-            flex: 1; 
-            background: #000; 
-            border: 1px solid #14532d; 
-            padding: 14px; 
-            color: var(--neon-green); 
-            font-family: inherit;
-            font-size: 16px;
-        }
-        input:focus { border-color: var(--neon-green); outline: none; box-shadow: 0 0 8px rgba(0,255,102,0.2); }
-        button { 
-            background: rgba(0, 255, 102, 0.05); 
-            border: 1px solid var(--neon-green); 
-            color: var(--neon-green); 
-            padding: 14px 40px; 
-            cursor: pointer; 
-            font-family: inherit; 
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
+        input[type="text"] { flex: 1; background: #000; border: 1px solid #14532d; padding: 14px; color: var(--neon-green); font-family: inherit; font-size: 16px; }
+        button { background: rgba(0, 255, 102, 0.05); border: 1px solid var(--neon-green); color: var(--neon-green); padding: 14px 40px; cursor: pointer; font-family: inherit; font-weight: bold; }
         button:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
         .console-grid { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 20px; }
-        .panel { 
-            background: #000; 
-            border: 1px solid var(--border-color); 
-            border-radius: 4px; 
-            padding: 15px; 
-            height: 620px; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .panel-title { color: #fff; font-weight: bold; margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #1e293b; padding-bottom: 5px;}
+        .panel { background: #000; border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; height: 620px; display: flex; flex-direction: column; }
+        .panel-title { color: #fff; font-weight: bold; margin-bottom: 10px; font-size: 13px; text-transform: uppercase; border-bottom: 1px solid #1e293b; padding-bottom: 5px;}
         .log-box { flex: 1; overflow-y: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
         #network-graph { flex: 1; background: #000; border-radius: 4px; }
         .vuln-alert { color: var(--neon-red); font-weight: bold; }
@@ -86,28 +39,26 @@
 <div class="terminal-container">
     <div class="header">
         <div>
-            <h1>[ socialscope // DEEP_RECON_PLATFORM ]</h1>
-            <div style="font-size: 11px; margin-top: 5px; color: #475569;">GEO_TRACKING NODES // EXPLOIT DICTIONARY CRACKER</div>
+            <h1>[ socialscope // EXPANDED_OSINT_MATRIX ]</h1>
+            <div style="font-size: 11px; margin-top: 5px; color: #475569;">GAMING, MEDIA, DOMAINS, AND ENCRYPTED PROFILE LINKAGES</div>
         </div>
-        <div style="color: var(--neon-red); font-size: 12px; border: 1px solid var(--neon-red); padding: 5px 10px; background: rgba(255,0,0,0.05); font-weight: bold;">ATTACK SIMULATOR ACTIVE</div>
+        <div style="color: var(--neon-red); font-size: 12px; border: 1px solid var(--neon-red); padding: 5px 10px; background: rgba(255,0,0,0.05); font-weight: bold;">EXPANDED CRAWLER ONLINE</div>
     </div>
 
     <div class="input-matrix">
-        <input type="text" id="targetUrl" placeholder="TARGET DEFINITION STRING (e.g., target-domain.com)" autocomplete="off">
-        <button onclick="executeProfiling()">ENGAGE FULL EXPLOIT CORE</button>
+        <input type="text" id="targetUrl" placeholder="ENTER DOMAIN OR USERNAME HANDLE (e.g., target.com OR @stealth_user)" autocomplete="off">
+        <button onclick="executeProfiling()">LAUNCH TOTAL TARGET SWEEP</button>
     </div>
 
-    <div id="ticker" class="status-ticker">> PROFILING IN PROGRESS...</div>
+    <div id="ticker" class="status-ticker">> ROUTING SEARCH PACKETS...</div>
 
     <div class="console-grid">
-        <!-- Live Terminal Stream Logs -->
         <div class="panel">
-            <div class="panel-title">> CYBER EXPLOIT LOG FEED</div>
-            <div id="output" class="log-box">socialscope BACKEND AWAKE. WAITING FOR ACQUISITION COMMANDS...</div>
+            <div class="panel-title">> ATTACK PROFILE LOGS</div>
+            <div id="output" class="log-box">SYSTEM ON STANDBY... READY FOR INPUT PARAMETERS.</div>
         </div>
-        <!-- Topology Visualization Graph -->
         <div class="panel">
-            <div class="panel-title">> CYBER LINK GEOGRAPHY MAP</div>
+            <div class="panel-title">> DYNAMIC INTERACTION TOPOLOGY</div>
             <div id="network-graph"></div>
         </div>
     </div>
@@ -124,22 +75,19 @@
         element.scrollTop = element.scrollHeight;
     }
 
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
     async function executeProfiling() {
         const urlInput = document.getElementById('targetUrl').value.trim();
         const outputBox = document.getElementById('output');
         const ticker = document.getElementById('ticker');
         
-        if(!urlInput) return alert("TARGET PARAMETER MISSING.");
+        if(!urlInput) return alert("TARGET PARAMETER REQUIRED.");
         
         outputBox.innerHTML = '';
         ticker.style.display = 'block';
         
-        appendLog(outputBox, `[+] socialscope initializing system exploit routine: ${urlInput}`);
-        appendLog(outputBox, `[+] Spinning network infrastructure adapters...`);
+        appendLog(outputBox, `[+] socialscope querying extended matrix maps for: ${urlInput}`);
 
         try {
             const response = await fetch('/api/scan', {
@@ -150,78 +98,88 @@
             const data = await response.json();
             
             if(data.error) {
-                appendLog(outputBox, `[!] ACQUISITION FAILED: ${data.error}`, 'vuln-alert');
+                appendLog(outputBox, `[!] RECON BLOCKED: ${data.error}`, 'vuln-alert');
                 ticker.style.display = 'none';
                 return;
             }
 
-            appendLog(outputBox, `[✔] DNS Resolution Complete -> ${data.ip_address}`, 'success-alert');
-            
-            // 1. IP Geolocation Log Output
-            appendLog(outputBox, `\n[📡] INJECTING GEOLOCATION ENGINE...`);
-            appendLog(outputBox, `    - Country Node  : ${data.geo.country}`);
-            appendLog(outputBox, `    - Regional City : ${data.geo.city}`);
-            appendLog(outputBox, `    - Network Provider: ${data.geo.isp}`);
-            appendLog(outputBox, `    - Coordinates   : Lat ${data.geo.lat} / Lon ${data.geo.lon}`);
+            if (data.type === "username") {
+                appendLog(outputBox, `[✔] Target Type identified as Username Handle.`, 'success-alert');
+                appendLog(outputBox, `\n[⚡] INJECTING MULTI-PLATFORM FOOTPRINT DICTIONARIES...`);
+                await sleep(400);
+                
+                appendLog(outputBox, `\n[📡] RECON ENVELOPE MATCHED CLUSTERS:`);
+                if (data.found_accounts.length > 0) {
+                    data.found_accounts.forEach(acc => {
+                        appendLog(outputBox, `    [MATCH] -> ${acc.platform}: ${acc.url}`, 'success-alert');
+                    });
+                } else {
+                    appendLog(outputBox, `    [ALERT] Zero public indexing traces found on mainstream lists.`, 'vuln-alert');
+                }
+                
+                appendLog(outputBox, `\n[ℹ] DISCORD RECON NOTE:`);
+                appendLog(outputBox, `    * ${data.discord_tip}`, 'warn-alert');
+                appendLog(outputBox, `\n[☠] SOCIAL SCOPE THREAT SCORE: ${data.risk_profile}`, data.found_accounts.length > 3 ? 'vuln-alert' : 'success-alert');
 
-            // 2. Automated Brute-Force Matrix Ticker Animation
-            appendLog(outputBox, `\n[⚡] INITIATING BRUTE-FORCE VULNERABILITY SIMULATION...`);
-            const attackPayloads = [
-                "    -> Injecting dictionary array payloads...",
-                "    -> Attempting default administrator handshake bypass...",
-                "    -> Compiling cross-site stack execution payload...",
-                "    -> Checking database validation response loops..."
-            ];
-            
-            for (let payload of attackPayloads) {
-                await sleep(350);
-                appendLog(outputBox, payload, 'warn-alert');
-            }
-
-            appendLog(outputBox, `[✔] Port Analysis Sweep Concluded. Open Vector Ports: ${data.open_ports.join(', ') || 'None verified'}`, 'warn-alert');
-            
-            appendLog(outputBox, `\n[⚙] AUDITING SECURITY ARCHITECTURE HEADERS:`);
-            Object.entries(data.security_headers).forEach(([k, v]) => {
-                appendLog(outputBox, `    - ${k}: ${v}`, v === 'Missing' ? 'vuln-alert' : 'success-alert');
-            });
-
-            appendLog(outputBox, `\n[☠] SYSTEM THREAT METRIC ASSESSMENT LOGS:`, data.vulnerabilities.length > 0 ? 'vuln-alert' : 'success-alert');
-            if(data.vulnerabilities.length > 0) {
-                data.vulnerabilities.forEach(v => appendLog(outputBox, `    x ${v}`, 'vuln-alert'));
             } else {
-                appendLog(outputBox, `    + Zero standard signature exploit surfaces located.`, 'success-alert');
+                appendLog(outputBox, `[✔] Host Mapping Resolved -> ${data.ip_address}`, 'success-alert');
+                appendLog(outputBox, `\n[📡] TARGET AREA TELEMETRY: ${data.geo.city}, ${data.geo.country} [${data.geo.isp}]`);
+                appendLog(outputBox, `\n[⚡] PORT EXPLOIT SURFACE SWEEP: Active Open Ports -> ${data.open_ports.join(', ') || 'None responsive'}`);
+                appendLog(outputBox, `\n[☠] MISCONFIGURATION ARCHITECTURE FAULTS:`, data.vulnerabilities.length > 0 ? 'vuln-alert' : 'success-alert');
+                data.vulnerabilities.forEach(v => appendLog(outputBox, `    x ${v}`, 'vuln-alert'));
             }
 
             generateGraphLayout(urlInput, data);
 
         } catch (error) {
-            appendLog(outputBox, `[!] FATAL SYSTEM TIMEOUT BRIDGE BREAKAGE.`, 'vuln-alert');
+            appendLog(outputBox, `[!] CORE COMMUNICATION EXCEPTION INCIDENT.`, 'vuln-alert');
         } finally {
             ticker.style.display = 'none';
         }
     }
 
     function generateGraphLayout(target, data) {
-        // Build nodes linking target server architecture and Geo Locations
-        const nodes = [
-            { id: 'root', label: target, color: { background: '#000', border: '#00ff66' }, shape: 'box', size: 25, font: { color: '#00ff66', size: 16 } },
-            { id: 'ip', label: `IP Address\n${data.ip_address}`, color: '#070a0e', shape: 'ellipse' },
-            { id: 'geo', label: `LOCATION\n${data.geo.city}, ${data.geo.country}\nISP: ${data.geo.isp.substring(0,15)}`, color: '#0f172a', shape: 'box', font: { color: '#ffaa00' } }
-        ];
+        const nodes = [];
+        const edges = [];
 
-        const edges = [
-            { from: 'root', to: 'ip', label: 'RESOLVES', color: '#1e293b' },
-            { from: 'ip', to: 'geo', label: 'LOCATED_AT', color: '#ffaa00', width: 1.5 }
-        ];
+        if (data.type === "username") {
+            nodes.push({ id: 'root', label: `@${data.target}`, color: { background: '#000', border: '#ffaa00' }, shape: 'box', size: 25, font: { color: '#ffaa00', size: 16 } });
+            
+            // Add a floating information node for Discord profiling paths
+            nodes.push({ id: 'discord_info', label: 'Discord Intel:\nCheck Linked Profiles', color: '#1e1b4b', shape: 'ellipse', font: { color: '#a78bfa' } });
+            edges.push({ from: 'root', to: 'discord_info', color: '#4c1d95', width: 1, label: 'HIDDEN_NODE' });
 
-        // Ports Mapping
-        data.open_ports.forEach(port => {
-            const portId = `port_${port}`;
-            nodes.push({ id: portId, label: `PORT ${port}\nOPEN`, color: '#7c2d12', shape: 'square', font: { color: '#ff5500' } });
-            edges.push({ from: 'ip', to: portId, color: '#ff5500' });
-        });
+            data.found_accounts.forEach((acc, idx) => {
+                const nodeId = `acc_${idx}`;
+                nodes.push({ id: nodeId, label: acc.platform, color: '#022c22', shape: 'dot', size: 12 });
+                edges.push({ from: 'root', to: nodeId, label: 'INDEXED', color: '#14532d' });
+            });
+        } else {
+            nodes.push({ id: 'root', label: target, color: { background: '#000', border: '#00ff66' }, shape: 'box', size: 25, font: { color: '#00ff66', size: 16 } });
+            nodes.push({ id: 'ip', label: `IP\n${data.ip_address}`, color: '#070a0e', shape: 'ellipse' });
+            nodes.push({ id: 'geo', label: `${data.geo.city}\n${data.geo.country}`, color: '#0f172a', shape: 'box', font: { color: '#ffaa00' } });
+            
+            edges.push({ from: 'root', to: 'ip', color: '#1e293b' });
+            edges.push({ from: 'ip', to: 'geo', color: '#ffaa00' });
 
-        // Vulnerabilities Mapping (Glowing crimson diamonds)
-        data.vulnerabilities.forEach((v, index) => {
-            const vulnId = `vuln_${index}`;
-  
+            data.open_ports.forEach(port => {
+                const id = `port_${port}`;
+                nodes.push({ id: id, label: `PORT ${port}`, color: '#7c2d12', shape: 'square' });
+                edges.push({ from: 'ip', to: id, color: '#ff5500' });
+            });
+
+            data.vulnerabilities.forEach((v, index) => {
+                const id = `vuln_${index}`;
+                nodes.push({ id: id, label: `THREAT`, color: { background: '#450a0a', border: '#ff2222' }, shape: 'diamond', font: { color: '#ff2222' } });
+                edges.push({ from: 'root', to: id, color: '#7f1d1d' });
+            });
+        }
+
+        const graphContainer = document.getElementById('network-graph');
+        const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+        const options = {
+            physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -60, springLength: 120 } },
+            nodes: { font: { face: 'Courier New', color: '#94a3b8', size: 11 }, borderWidth: 1 }
+        };
+
+    
