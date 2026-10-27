@@ -1,185 +1,537 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>// socialscope // COMPREHENSIVE_OSINT</title>
-    <script type="text/javascript" src="https://unpkg.com"></script>
+    <meta name="theme-color" content="#020609">
+    <title>SocialScope | Public Web Analyzer</title>
+
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
     <style>
         :root {
-            --bg-color: #020305;
-            --panel-color: #070a0e;
-            --neon-green: #00ff66;
-            --neon-amber: #ffaa00;
-            --neon-red: #ff2222;
-            --text-color: #94a3b8;
-            --border-color: #1e293b;
+            --bg: #020609;
+            --panel: #080e13;
+            --green: #00ff88;
+            --amber: #ffbd4a;
+            --red: #ff6464;
+            --text: #c0d0da;
+            --muted: #718596;
+            --border: #1b3437;
         }
-        body { font-family: 'Courier New', Courier, monospace; background-color: var(--bg-color); color: var(--text-color); padding: 20px; margin: 0; }
-        .terminal-container { max-width: 1550px; margin: 0 auto; background: var(--panel-color); padding: 25px; border: 1px solid #14532d; }
-        .header { border-bottom: 2px solid #14532d; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { color: var(--neon-green); margin: 0; font-size: 26px; text-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
-        .input-matrix { display: flex; gap: 10px; margin-bottom: 25px; }
-        input[type="text"] { flex: 1; background: #000; border: 1px solid #14532d; padding: 14px; color: var(--neon-green); font-family: inherit; font-size: 16px; }
-        button { background: rgba(0, 255, 102, 0.05); border: 1px solid var(--neon-green); color: var(--neon-green); padding: 14px 40px; cursor: pointer; font-family: inherit; font-weight: bold; }
-        button:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
-        .console-grid { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 20px; }
-        .panel { background: #000; border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; height: 620px; display: flex; flex-direction: column; }
-        .panel-title { color: #fff; font-weight: bold; margin-bottom: 10px; font-size: 13px; text-transform: uppercase; border-bottom: 1px solid #1e293b; padding-bottom: 5px;}
-        .log-box { flex: 1; overflow-y: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
-        #network-graph { flex: 1; background: #000; border-radius: 4px; }
-        .vuln-alert { color: var(--neon-red); font-weight: bold; }
-        .warn-alert { color: var(--neon-amber); }
-        .success-alert { color: var(--neon-green); }
-        .status-ticker { color: var(--neon-amber); margin: 10px 0; font-size: 14px; display: none; font-weight: bold; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 18px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Courier New", monospace;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1450px;
+            margin: auto;
+        }
+
+        header {
+            padding: 20px 0;
+            margin-bottom: 22px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            color: var(--green);
+            font-size: clamp(23px, 4vw, 34px);
+            margin: 0 0 10px;
+            overflow-wrap: anywhere;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 5px 9px;
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-size: 11px;
+        }
+
+        .search-panel, .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 17px;
+            border-radius: 5px;
+        }
+
+        .search-panel { margin-bottom: 18px; }
+
+        label, .panel-title {
+            display: block;
+            color: var(--green);
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            min-width: 0;
+            padding: 14px;
+            background: #020609;
+            color: var(--green);
+            border: 1px solid var(--border);
+            font: inherit;
+            font-size: 14px;
+            border-radius: 3px;
+        }
+
+        input:focus {
+            outline: 1px solid var(--green);
+        }
+
+        button {
+            padding: 14px 18px;
+            border: 1px solid var(--green);
+            background: #05271b;
+            color: var(--green);
+            font: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--green);
+            color: #001108;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.6;
+            margin: 12px 0 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+            gap: 18px;
+        }
+
+        .panel { min-width: 0; }
+
+        .panel-title {
+            padding-bottom: 11px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #output {
+            min-height: 280px;
+            max-height: 650px;
+            overflow: auto;
+            font-size: 12px;
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        #network-graph {
+            width: 100%;
+            height: 440px;
+            background: #03080c;
+            border: 1px solid #112326;
+            border-radius: 3px;
+        }
+
+        .green { color: var(--green); }
+        .amber { color: var(--amber); }
+        .red { color: var(--red); }
+        .muted { color: var(--muted); }
+
+        .footer {
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 760px) {
+            body { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+            .input-row { flex-direction: column; }
+            button { width: 100%; }
+            #network-graph { height: 340px; }
+            #output { min-height: 220px; }
+        }
     </style>
 </head>
+
 <body>
-
-<div class="terminal-container">
-    <div class="header">
-        <div>
-            <h1>[ socialscope // EXPANDED_OSINT_MATRIX ]</h1>
-            <div style="font-size: 11px; margin-top: 5px; color: #475569;">GAMING, MEDIA, DOMAINS, AND ENCRYPTED PROFILE LINKAGES</div>
+<div class="container">
+    <header>
+        <h1>[ SocialScope ]</h1>
+        <div class="subtitle">
+            PUBLIC WEB ANALYSIS // PROFILE URL CHECKS //
+            DOMAIN CONFIGURATION
         </div>
-        <div style="color: var(--neon-red); font-size: 12px; border: 1px solid var(--neon-red); padding: 5px 10px; background: rgba(255,0,0,0.05); font-weight: bold;">EXPANDED CRAWLER ONLINE</div>
-    </div>
+        <div class="status" id="status">SYSTEM READY</div>
+    </header>
 
-    <div class="input-matrix">
-        <input type="text" id="targetUrl" placeholder="ENTER DOMAIN OR USERNAME HANDLE (e.g., target.com OR @stealth_user)" autocomplete="off">
-        <button onclick="executeProfiling()">LAUNCH TOTAL TARGET SWEEP</button>
-    </div>
+    <section class="search-panel">
+        <label for="target">TARGET INPUT</label>
 
-    <div id="ticker" class="status-ticker">> ROUTING SEARCH PACKETS...</div>
+        <form id="scanForm">
+            <div class="input-row">
+                <input
+                    id="target"
+                    type="text"
+                    maxlength="2048"
+                    placeholder="@username or example.com"
+                    autocomplete="off"
+                    required
+                >
+                <button id="scanButton" type="submit">
+                    RUN ANALYSIS
+                </button>
+            </div>
+        </form>
 
-    <div class="console-grid">
-        <div class="panel">
-            <div class="panel-title">> ATTACK PROFILE LOGS</div>
-            <div id="output" class="log-box">SYSTEM ON STANDBY... READY FOR INPUT PARAMETERS.</div>
-        </div>
-        <div class="panel">
-            <div class="panel-title">> DYNAMIC INTERACTION TOPOLOGY</div>
+        <p class="hint">
+            Enter a public username handle or a domain you own or
+            are authorized to assess. Results are preliminary and
+            may require manual verification.
+        </p>
+    </section>
+
+    <main class="grid">
+        <section class="panel">
+            <div class="panel-title">> ANALYSIS REPORT</div>
+            <div id="output" aria-live="polite">
+                System ready. Enter a target to begin.
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-title">> RELATIONSHIP GRAPH</div>
             <div id="network-graph"></div>
-        </div>
-    </div>
+            <p class="hint">
+                The graph visualizes returned results. It does not
+                prove identity, ownership, or a security vulnerability.
+            </p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        SocialScope // Public information only<br>
+        No account access, password attacks, or exploit execution.
+    </footer>
 </div>
 
 <script>
-    let network = null;
+"use strict";
 
-    function appendLog(element, text, colorClass = '') {
-        const span = document.createElement('span');
-        span.className = colorClass;
-        span.innerText = text + '\n';
-        element.appendChild(span);
-        element.scrollTop = element.scrollHeight;
+const form = document.getElementById("scanForm");
+const input = document.getElementById("target");
+const output = document.getElementById("output");
+const button = document.getElementById("scanButton");
+const statusLabel = document.getElementById("status");
+const graphContainer = document.getElementById("network-graph");
+
+let network = null;
+
+function logLine(text, className = "") {
+    const line = document.createElement("div");
+    line.className = className;
+    line.textContent = text;
+    output.appendChild(line);
+}
+
+function resetOutput() {
+    output.replaceChildren();
+}
+
+function addNode(nodes, id, label, color) {
+    nodes.push({
+        id: id,
+        label: label,
+        color: {
+            background: "#07130f",
+            border: color
+        },
+        font: {
+            color: color,
+            face: "Courier New",
+            size: 13
+        },
+        shape: "box",
+        margin: 10
+    });
+}
+
+function drawGraph(data) {
+    if (typeof vis === "undefined" || !vis.Network) {
+        graphContainer.textContent =
+            "Graph library unavailable. Report data is still available.";
+        return;
     }
 
-    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    const nodes = [];
+    const edges = [];
 
-    async function executeProfiling() {
-        const urlInput = document.getElementById('targetUrl').value.trim();
-        const outputBox = document.getElementById('output');
-        const ticker = document.getElementById('ticker');
-        
-        if(!urlInput) return alert("TARGET PARAMETER REQUIRED.");
-        
-        outputBox.innerHTML = '';
-        ticker.style.display = 'block';
-        
-        appendLog(outputBox, `[+] socialscope querying extended matrix maps for: ${urlInput}`);
+    if (data.type === "username") {
+        addNode(
+            nodes, "target",
+            "@" + data.target,
+            "#00ff88"
+        );
 
-        try {
-            const response = await fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: urlInput })
+        (data.found_accounts || []).forEach((account, index) => {
+            const id = "profile_" + index;
+
+            addNode(
+                nodes, id,
+                account.platform + "\n" + account.status,
+                account.http_status === 200 ? "#ffbd4a" : "#8ba1b2"
+            );
+
+            edges.push({
+                from: "target",
+                to: id,
+                color: "#244b3c"
             });
-            const data = await response.json();
-            
-            if(data.error) {
-                appendLog(outputBox, `[!] RECON BLOCKED: ${data.error}`, 'vuln-alert');
-                ticker.style.display = 'none';
-                return;
+        });
+    } else {
+        addNode(nodes, "domain", data.domain, "#00ff88");
+
+        addNode(
+            nodes, "ip",
+            "IP\n" + data.ip_address,
+            "#ffbd4a"
+        );
+
+        edges.push({
+            from: "domain",
+            to: "ip",
+            color: "#42655b"
+        });
+
+        (data.subdomains || []).forEach((item, index) => {
+            const id = "sub_" + index;
+
+            addNode(nodes, id, item.subdomain, "#73c7ff");
+
+            edges.push({
+                from: "domain",
+                to: id,
+                color: "#244b3c"
+            });
+        });
+
+        Object.entries(data.security_headers || {}).forEach(
+            ([header, result], index) => {
+                const id = "header_" + index;
+                const color =
+                    result === "Present" ? "#00ff88" : "#ffbd4a";
+
+                addNode(nodes, id, header + "\n" + result, color);
+
+                edges.push({
+                    from: "domain",
+                    to: id,
+                    color: "#344c56"
+                });
             }
-
-            if (data.type === "username") {
-                appendLog(outputBox, `[✔] Target Type identified as Username Handle.`, 'success-alert');
-                appendLog(outputBox, `\n[⚡] INJECTING MULTI-PLATFORM FOOTPRINT DICTIONARIES...`);
-                await sleep(400);
-                
-                appendLog(outputBox, `\n[📡] RECON ENVELOPE MATCHED CLUSTERS:`);
-                if (data.found_accounts.length > 0) {
-                    data.found_accounts.forEach(acc => {
-                        appendLog(outputBox, `    [MATCH] -> ${acc.platform}: ${acc.url}`, 'success-alert');
-                    });
-                } else {
-                    appendLog(outputBox, `    [ALERT] Zero public indexing traces found on mainstream lists.`, 'vuln-alert');
-                }
-                
-                appendLog(outputBox, `\n[ℹ] DISCORD RECON NOTE:`);
-                appendLog(outputBox, `    * ${data.discord_tip}`, 'warn-alert');
-                appendLog(outputBox, `\n[☠] SOCIAL SCOPE THREAT SCORE: ${data.risk_profile}`, data.found_accounts.length > 3 ? 'vuln-alert' : 'success-alert');
-
-            } else {
-                appendLog(outputBox, `[✔] Host Mapping Resolved -> ${data.ip_address}`, 'success-alert');
-                appendLog(outputBox, `\n[📡] TARGET AREA TELEMETRY: ${data.geo.city}, ${data.geo.country} [${data.geo.isp}]`);
-                appendLog(outputBox, `\n[⚡] PORT EXPLOIT SURFACE SWEEP: Active Open Ports -> ${data.open_ports.join(', ') || 'None responsive'}`);
-                appendLog(outputBox, `\n[☠] MISCONFIGURATION ARCHITECTURE FAULTS:`, data.vulnerabilities.length > 0 ? 'vuln-alert' : 'success-alert');
-                data.vulnerabilities.forEach(v => appendLog(outputBox, `    x ${v}`, 'vuln-alert'));
-            }
-
-            generateGraphLayout(urlInput, data);
-
-        } catch (error) {
-            appendLog(outputBox, `[!] CORE COMMUNICATION EXCEPTION INCIDENT.`, 'vuln-alert');
-        } finally {
-            ticker.style.display = 'none';
-        }
+        );
     }
 
-    function generateGraphLayout(target, data) {
-        const nodes = [];
-        const edges = [];
+    if (network) {
+        network.destroy();
+        network = null;
+    }
+
+    graphContainer.replaceChildren();
+
+    network = new vis.Network(
+        graphContainer,
+        {
+            nodes: new vis.DataSet(nodes),
+            edges: new vis.DataSet(edges)
+        },
+        {
+            autoResize: true,
+            physics: {
+                enabled: true,
+                stabilization: {
+                    iterations: 100
+                }
+            },
+            interaction: {
+                hover: true,
+                navigationButtons: true,
+                keyboard: true
+            },
+            nodes: {
+                borderWidth: 1
+            },
+            edges: {
+                smooth: {
+                    type: "dynamic"
+                }
+            }
+        }
+    );
+}
+
+function renderUsername(data) {
+    logLine("TARGET TYPE: USERNAME", "green");
+    logLine("HANDLE: @" + data.target);
+    logLine("");
+
+    logLine("CANDIDATE PROFILE URLS", "amber");
+
+    (data.found_accounts || []).forEach(account => {
+        logLine("[" + account.status + "] " + account.platform);
+        logLine(account.url, "muted");
+        logLine("");
+    });
+
+    logLine(
+        data.note || "Results may require manual verification.",
+        "amber"
+    );
+}
+
+function renderDomain(data) {
+    logLine("TARGET TYPE: DOMAIN", "green");
+    logLine("DOMAIN: " + data.domain);
+    logLine("IP ADDRESS: " + data.ip_address);
+    logLine("SERVER: " + data.server);
+    logLine("");
+
+    logLine("RESOLVED ADDRESSES", "amber");
+    (data.all_ip_addresses || []).forEach(ip => logLine(ip));
+    logLine("");
+
+    logLine("SECURITY HEADERS", "amber");
+
+    Object.entries(data.security_headers || {}).forEach(
+        ([header, result]) => {
+            logLine(
+                header + ": " + result,
+                result === "Present" ? "green" : "amber"
+            );
+        }
+    );
+
+    logLine("");
+    logLine("OBSERVATIONS", "amber");
+
+    if ((data.vulnerabilities || []).length === 0) {
+        logLine("No missing headers were reported by this check.");
+    } else {
+        data.vulnerabilities.forEach(item => {
+            logLine(item.title, "amber");
+            logLine(item.detail);
+        });
+    }
+
+    logLine("");
+    logLine("RESOLVED COMMON SUBDOMAINS", "amber");
+
+    if (!(data.subdomains || []).length) {
+        logLine("No common subdomains resolved.");
+    } else {
+        data.subdomains.forEach(item => {
+            logLine(item.subdomain + " -> " + item.ip);
+        });
+    }
+
+    logLine("");
+    logLine(data.note || "", "muted");
+}
+
+form.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const target = input.value.trim();
+
+    if (!target) {
+        return;
+    }
+
+    resetOutput();
+    graphContainer.textContent = "Waiting for analysis results...";
+    button.disabled = true;
+    statusLabel.textContent = "ANALYSIS RUNNING";
+    statusLabel.style.color = "#ffbd4a";
+
+    logLine("> Submitting analysis request...");
+    logLine("> Target: " + target);
+
+    try {
+        const response = await fetch("/api/scan", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ url: target })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error || "Request failed.");
+        }
+
+        resetOutput();
 
         if (data.type === "username") {
-            nodes.push({ id: 'root', label: `@${data.target}`, color: { background: '#000', border: '#ffaa00' }, shape: 'box', size: 25, font: { color: '#ffaa00', size: 16 } });
-            
-            // Add a floating information node for Discord profiling paths
-            nodes.push({ id: 'discord_info', label: 'Discord Intel:\nCheck Linked Profiles', color: '#1e1b4b', shape: 'ellipse', font: { color: '#a78bfa' } });
-            edges.push({ from: 'root', to: 'discord_info', color: '#4c1d95', width: 1, label: 'HIDDEN_NODE' });
-
-            data.found_accounts.forEach((acc, idx) => {
-                const nodeId = `acc_${idx}`;
-                nodes.push({ id: nodeId, label: acc.platform, color: '#022c22', shape: 'dot', size: 12 });
-                edges.push({ from: 'root', to: nodeId, label: 'INDEXED', color: '#14532d' });
-            });
+            renderUsername(data);
+        } else if (data.type === "domain") {
+            renderDomain(data);
         } else {
-            nodes.push({ id: 'root', label: target, color: { background: '#000', border: '#00ff66' }, shape: 'box', size: 25, font: { color: '#00ff66', size: 16 } });
-            nodes.push({ id: 'ip', label: `IP\n${data.ip_address}`, color: '#070a0e', shape: 'ellipse' });
-            nodes.push({ id: 'geo', label: `${data.geo.city}\n${data.geo.country}`, color: '#0f172a', shape: 'box', font: { color: '#ffaa00' } });
-            
-            edges.push({ from: 'root', to: 'ip', color: '#1e293b' });
-            edges.push({ from: 'ip', to: 'geo', color: '#ffaa00' });
-
-            data.open_ports.forEach(port => {
-                const id = `port_${port}`;
-                nodes.push({ id: id, label: `PORT ${port}`, color: '#7c2d12', shape: 'square' });
-                edges.push({ from: 'ip', to: id, color: '#ff5500' });
-            });
-
-            data.vulnerabilities.forEach((v, index) => {
-                const id = `vuln_${index}`;
-                nodes.push({ id: id, label: `THREAT`, color: { background: '#450a0a', border: '#ff2222' }, shape: 'diamond', font: { color: '#ff2222' } });
-                edges.push({ from: 'root', to: id, color: '#7f1d1d' });
-            });
+            throw new Error("Unexpected response from the server.");
         }
 
-        const graphContainer = document.getElementById('network-graph');
-        const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
-        const options = {
-            physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -60, springLength: 120 } },
-            nodes: { font: { face: 'Courier New', color: '#94a3b8', size: 11 }, borderWidth: 1 }
-        };
+        drawGraph(data);
 
+        statusLabel.textContent = "ANALYSIS COMPLETE";
+        statusLabel.style.color = "#00ff88";
+
+    } catch (error) {
+        resetOutput();
+        logLine("ANALYSIS FAILED", "red");
+        logLine(error.message || "Unable to contact the server.", "amber");
+        graphContainer.textContent = "No graph available.";
+
+        statusLabel.textContent = "ANALYSIS ERROR";
+        statusLabel.style.color = "#ff6464";
+
+    } finally {
+        button.disabled = false;
+    }
+});
+</script>
+</body>
+    </html>
     
