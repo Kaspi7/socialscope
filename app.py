@@ -1,156 +1,97 @@
-import ipaddress
 import socket
-from urllib.parse import urlparse
-
+import ssl
+import os
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 
-import os
-app = Flask(
-    __name__,
-    template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
-)
-app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
+app = Flask(__name__, template_folder='templates')
+CORS(app)
 
-@app.route("/health")
-def health():
-    return {"status": "ok"}, 200
-    
-def validate_public_url(url):
-    try:
-        parsed = urlparse(url)
+# Fallback subdomains list for active footprinting simulation
+COMMON_SUBDOMAINS = ['www', 'mail', 'remote', 'blog', 'webmail', 'server', 'ns1', 'vpn', 'api', 'dev', 'stage']
 
-        if parsed.scheme not in ("http", "https"):
-            return None
-
-        if not parsed.hostname or parsed.username or parsed.password:
-            return None
-
-        if parsed.port not in (None, 80, 443):
-            return None
-
-        host = parsed.hostname.rstrip(".").lower()
-
-        if host == "localhost" or host.endswith(
-            (".localhost", ".local", ".internal")
-        ):
-            return None
-
-        # Reject literal private, loopback and reserved IP addresses.
-        try:
-            ip = ipaddress.ip_address(host)
-            if not ip.is_global:
-                return None
-        except ValueError:
-            # Hostname: verify every resolved address is public.
-            addresses = socket.getaddrinfo(
-                host, parsed.port or (443 if parsed.scheme == "https" else 80),
-                type=socket.SOCK_STREAM
-            )
-            if not addresses:
-                return None
-
-            for address in addresses:
-                if not ipaddress.ip_address(address[4][0]).is_global:
-                    return None
-
-        return parsed
-    except (ValueError, OSError):
-        return None
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/api/analyze", methods=["POST"])
-def analyze():
-    data = request.get_json(silent=True) or {}
-    url = data.get("url", "").strip()
-
-    if len(url) > 2048:
-        return jsonify({"error": "URL is too long."}), 400
-
-    parsed = validate_public_url(url)
-    if not parsed:
-        return jsonify({
-            "error": "Invalid URL or non-public address blocked."
-        }), 400
-
-    try:
-        # Avoid automatic redirects to unvalidated destinations.
-        with requests.get(
-            url,
-            timeout=(3, 6),
-            headers={"User-Agent": "SocialScope/1.0"},
-            allow_redirects=False,
-            stream=True
-        ) as response:
-            if 300 <= response.status_code < 400:
-                return jsonify({
-                    "error": "Redirect blocked. Enter the final public URL."
-                }), 400
-
-            response.raise_for_status()
-
-            content_type = response.headers.get("Content-Type", "").lower()
-            if "text/html" not in content_type:
-                return jsonify({
-                    "error": "This version analyzes HTML webpages only."
-                }), 400
-
-            chunks = []
-            total = 0
-            for chunk in response.iter_content(8192):
-                total += len(chunk)
-                if total > 1_000_000:
-                    return jsonify({
-                        "error": "Page is too large to analyze."
-                    }), 400
-                chunks.append(chunk)
-
-            html = b"".join(chunks).decode(
-                response.encoding or "utf-8", errors="replace"
-            )
-
-        soup = BeautifulSoup(html, "html.parser")
-        title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        meta = soup.find("meta", attrs={"name": "description"})
-        description = meta.get("content", "")[:1000] if meta else ""
-
-        links = [
-            a.get("href", "")[:2048]
-            for a in soup.find_all("a", href=True)[:50]
-        ]
-
-        return jsonify({
-            "url": url,
-            "title": title,
-            "description": description,
-            "links": links
-        })
-
-    except (requests.RequestException, OSError, UnicodeError):
-        return jsonify({
-            "error": "Could not retrieve that page."
-        }), 400
-
-@app.route("/debug-files")
-def debug_files():
-    from pathlib import Path
-
-    root = Path(__file__).parent
-    return {
-        "app_directory": str(root),
-        "root_files": sorted(p.name for p in root.iterdir()),
-        "templates_exists": (root / "templates").is_dir(),
-        "template_files": (
-            sorted(p.name for p in (root / "templates").iterdir())
-            if (root / "templates").is_dir()
-            else []
-        )
+def evaluate_target(target_url):
+    domain = target_url.replace("https://", "").replace("http://", "").split('/')[0].strip()
+    report = {
+        "domain": domain, 
+        "ip_address": "Unknown", 
+        "server": "Unknown", 
+        "subdomains": [],
+        "security_headers": {},
+        "ssl": {"issuer": "Unknown", "expires": "Unknown", "status": "Valid"},
+        "vulnerabilities": []
     }
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    # 1. Host Resolution
+    try:
+        report["ip_address"] = socket.gethostbyname(domain)
+    except Exception:
+        return {"error": f"Target host [{domain}] could not be resolved in active DNS registries."}
+
+    # 2. Infrastructure Profiling
+    try:
+        response = requests.get(f"https://{domain}", timeout=5, headers={"User-Agent": "Mozilla/5.0 OSINT-Collector/2.0"})
+        headers = response.headers
+        report["server"] = headers.get("Server", "Undetected/Protected")
+        
+        # Header Evaluations
+        headers_to_check = {
+            "X-Frame-Options": "Clickjacking Risk",
+            "Content-Security-Policy": "XSS Injection Risk",
+            "Strict-Transport-Security": "MITM Hacking Risk"
+        }
+        for header, risk in headers_to_check.items():
+            val = headers.get(header)
+            report["security_headers"][header] = val if val else "Missing"
+            if not val:
+                report["vulnerabilities"].append(f"Missing {header} ({risk})")
+                
+    except Exception:
+        report["server"] = "Cloudflare / Firewall Protected"
+
+    # 3. Cryptographic Validation (SSL Check)
+    try:
+        ctx = ssl.create_default_context()
+        with ctx.wrap_socket(socket.socket(), server_hostname=domain) as s:
+            s.settimeout(3.0)
+            s.connect((domain, 443))
+            cert = s.getpeercert()
+            issuer = dict(x for x in cert.get('issuer', []))
+            report["ssl"]["issuer"] = issuer.get('commonName', 'Unknown Authority')
+            report["ssl"]["expires"] = cert.get('notAfter', 'Unknown')
+    except Exception as e:
+        report["ssl"]["status"] = "No Active SSL or Handshake Refused"
+        report["vulnerabilities"].append("Cryptographic structure weak or missing HTTPS enforcement.")
+
+    # 4. Fast Subdomain Footprinting Loop
+    for sub in COMMON_SUBDOMAINS:
+        sub_target = f"{sub}.{domain}"
+        try:
+            sub_ip = socket.gethostbyname(sub_target)
+            report["subdomains"].append({"subdomain": sub_target, "ip": sub_ip})
+        except socket.gaierror:
+            continue
+
+    return report
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/api/scan', methods=['POST'])
+def scan():
+    data = request.get_json() or {}
+    target = data.get("url")
+    if not target:
+        return jsonify({"error": "Target parameters require an active URL or core domain."}), 400
+    
+    result = evaluate_target(target)
+    return jsonify(result)
+
+if __name__ == '__main__':
+    # Binds correctly to environment ports dynamically assigned by Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    
