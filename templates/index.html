@@ -1,345 +1,227 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SocialScope | OSINT Workspace</title>
-<style>
-:root {
-  --bg:#090d16; --panel:#111827; --panel2:#172033;
-  --border:#263248; --text:#e7edf7; --muted:#94a3b8;
-  --accent:#8b9dff; --green:#65d6ad;
-}
-* { box-sizing:border-box; }
-body {
-  margin:0; background:var(--bg); color:var(--text);
-  font:15px/1.5 system-ui,-apple-system,sans-serif;
-}
-button,input,textarea { font:inherit; }
-button,a { -webkit-tap-highlight-color:transparent; }
-a { color:var(--accent); overflow-wrap:anywhere; }
-header {
-  padding:20px; border-bottom:1px solid var(--border);
-  display:flex; justify-content:space-between; align-items:center;
-  gap:12px; flex-wrap:wrap;
-}
-.brand { font-size:22px; font-weight:800; letter-spacing:-.6px; }
-.brand span { color:var(--accent); }
-.status { color:var(--green); font-size:12px; }
-.layout { display:grid; grid-template-columns:220px minmax(0,1fr); }
-nav { padding:20px 12px; border-right:1px solid var(--border); min-height:85vh; }
-.navbtn {
-  display:block; width:100%; text-align:left; margin-bottom:7px;
-  padding:12px; border:1px solid transparent; border-radius:9px;
-  color:var(--muted); background:transparent; cursor:pointer;
-}
-.navbtn.active,.navbtn:hover { background:var(--panel2); color:var(--text); border-color:var(--border); }
-main { padding:25px; max-width:1100px; width:100%; }
-h1 { font-size:27px; margin:0 0 5px; }
-h2 { font-size:18px; margin:0 0 12px; }
-p { color:var(--muted); }
-.sub { margin-top:0; }
-.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:22px 0; }
-.card,.panel {
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:13px; padding:18px; min-width:0;
-}
-.metric { font-size:25px; font-weight:750; }
-.small { font-size:12px; color:var(--muted); }
-.panel { margin-bottom:16px; }
-label { display:block; margin:12px 0 6px; color:#c7d2e4; font-size:13px; }
-input,textarea {
-  width:100%; background:#0b1220; color:var(--text);
-  border:1px solid var(--border); border-radius:8px; padding:12px;
-}
-input:focus,textarea:focus { outline:1px solid var(--accent); }
-.actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; }
-.btn {
-  padding:10px 14px; border:1px solid var(--border); border-radius:8px;
-  background:var(--panel2); color:var(--text); cursor:pointer;
-}
-.btn.primary { background:var(--accent); color:#080d19; border-color:var(--accent); font-weight:700; }
-.btn:disabled { opacity:.5; }
-.note { font-size:12px; color:var(--muted); }
-.result { white-space:pre-wrap; overflow-wrap:anywhere; margin-top:14px; }
-.profile-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:15px; }
-.profile {
-  border:1px solid var(--border); background:#0b1220; border-radius:9px;
-  padding:13px; min-width:0;
-}
-.profile strong { display:block; margin-bottom:5px; }
-.profile a { font-size:13px; }
-.hidden { display:none !important; }
-.finding {
-  padding:13px 0; border-bottom:1px solid var(--border);
-  overflow-wrap:anywhere;
-}
-.finding:last-child { border-bottom:0; }
-.tag { display:inline-block; border:1px solid var(--border); border-radius:20px; padding:2px 8px; font-size:11px; color:var(--green); }
-footer { padding:20px; border-top:1px solid var(--border); text-align:center; color:var(--muted); font-size:12px; }
-@media(max-width:680px) {
-  .layout { grid-template-columns:1fr; }
-  nav { min-height:auto; border-right:0; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; padding:10px; }
-  .navbtn { white-space:nowrap; width:auto; margin:0; padding:9px 12px; }
-  main { padding:17px 13px; }
-  .cards { grid-template-columns:1fr; }
-  .profile-list { grid-template-columns:1fr; }
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>// socialscope // SYSTEM_OSINT_NODE</title>
+    <script type="text/javascript" src="https://unpkg.com"></script>
+    <style>
+        :root {
+            --bg-color: #020305;
+            --panel-color: #070a0e;
+            --neon-green: #00ff66;
+            --neon-amber: #ffaa00;
+            --neon-red: #ff2222;
+            --text-color: #94a3b8;
+            --border-color: #1e293b;
+        }
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            padding: 20px; 
+            margin: 0; 
+        }
+        .terminal-container { 
+            max-width: 1550px; 
+            margin: 0 auto; 
+            background: var(--panel-color); 
+            padding: 25px; 
+            border-radius: 4px; 
+            border: 1px solid #14532d; 
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.03);
+        }
+        .header {
+            border-bottom: 2px solid #14532d;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: var(--neon-green); margin: 0; font-size: 26px; text-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
+        .input-matrix { display: flex; gap: 10px; margin-bottom: 25px; }
+        input[type="text"] { 
+            flex: 1; 
+            background: #000; 
+            border: 1px solid #14532d; 
+            padding: 14px; 
+            color: var(--neon-green); 
+            font-family: inherit;
+            font-size: 16px;
+        }
+        input:focus { border-color: var(--neon-green); outline: none; box-shadow: 0 0 8px rgba(0,255,102,0.2); }
+        button { 
+            background: rgba(0, 255, 102, 0.05); 
+            border: 1px solid var(--neon-green); 
+            color: var(--neon-green); 
+            padding: 14px 40px; 
+            cursor: pointer; 
+            font-family: inherit; 
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        button:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
+        .console-grid { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 20px; }
+        .panel { 
+            background: #000; 
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
+            padding: 15px; 
+            height: 620px; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .panel-title { color: #fff; font-weight: bold; margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #1e293b; padding-bottom: 5px;}
+        .log-box { flex: 1; overflow-y: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
+        #network-graph { flex: 1; background: #000; border-radius: 4px; }
+        .vuln-alert { color: var(--neon-red); font-weight: bold; }
+        .warn-alert { color: var(--neon-amber); }
+        .success-alert { color: var(--neon-green); }
+        .status-ticker { color: var(--neon-amber); margin: 10px 0; font-size: 14px; display: none; font-weight: bold; }
+    </style>
 </head>
 <body>
-<header>
-  <div class="brand">Social<span>Scope</span></div>
-  <div class="status">● WORKSPACE READY</div>
-</header>
 
-<div class="layout">
-<nav aria-label="Tools">
-  <button class="navbtn active" data-page="overview">⌂ Overview</button>
-  <button class="navbtn" data-page="username">◎ Username Search</button>
-  <button class="navbtn" data-page="webpage">⌕ Webpage Analyzer</button>
-  <button class="navbtn" data-page="findings">▤ Findings & Reports</button>
-</nav>
-
-<main>
-<section id="overview" class="page">
-  <h1>OSINT Workspace</h1>
-  <p class="sub">Organize public digital-footprint research in one place.</p>
-  <div class="cards">
-    <div class="card"><div class="small">TOOLS</div><div class="metric">03</div><div class="small">Workspace modules</div></div>
-    <div class="card"><div class="small">SAVED FINDINGS</div><div class="metric" id="findingCount">0</div><div class="small">In this browser session</div></div>
-    <div class="card"><div class="small">REPORT EXPORT</div><div class="metric">JSON / CSV</div><div class="small">Download your findings</div></div>
-  </div>
-  <div class="panel">
-    <h2>Start researching</h2>
-    <p>Search for public profile URLs associated with a username, inspect an accessible webpage, or review and export saved findings.</p>
-    <div class="actions">
-      <button class="btn primary" data-goto="username">Username Search</button>
-      <button class="btn" data-goto="webpage">Analyze a Webpage</button>
-      <button class="btn" data-goto="findings">Open Reports</button>
+<div class="terminal-container">
+    <div class="header">
+        <div>
+            <h1>[ socialscope // DEEP_RECON_PLATFORM ]</h1>
+            <div style="font-size: 11px; margin-top: 5px; color: #475569;">GEO_TRACKING NODES // EXPLOIT DICTIONARY CRACKER</div>
+        </div>
+        <div style="color: var(--neon-red); font-size: 12px; border: 1px solid var(--neon-red); padding: 5px 10px; background: rgba(255,0,0,0.05); font-weight: bold;">ATTACK SIMULATOR ACTIVE</div>
     </div>
-  </div>
-  <div class="panel">
-    <h2>Research boundaries</h2>
-    <p class="note">Use public information or systems you are authorized to assess. Profile links are leads, not proof of identity or account existence. Do not use this tool to bypass authentication, access controls, or platform restrictions.</p>
-  </div>
-</section>
 
-<section id="username" class="page hidden">
-  <h1>Username Search</h1>
-  <p class="sub">Generate profile links on selected platforms for manual public review.</p>
-  <div class="panel">
-    <label for="usernameInput">Username or handle</label>
-    <input id="usernameInput" maxlength="100" placeholder="e.g. example_user" autocomplete="off">
-    <p class="note">Enter the handle only, without a URL. Results are candidate profile links, not verified matches.</p>
-    <div class="actions">
-      <button class="btn primary" id="searchUsername">Generate Profile Links</button>
-      <button class="btn" id="saveUsername">Save Search as Finding</button>
+    <div class="input-matrix">
+        <input type="text" id="targetUrl" placeholder="TARGET DEFINITION STRING (e.g., target-domain.com)" autocomplete="off">
+        <button onclick="executeProfiling()">ENGAGE FULL EXPLOIT CORE</button>
     </div>
-    <div id="profileResults" class="profile-list"></div>
-    <div id="usernameMessage" class="result"></div>
-  </div>
-</section>
 
-<section id="webpage" class="page hidden">
-  <h1>Public Webpage Analyzer</h1>
-  <p class="sub">Extract basic metadata and links from an accessible public HTML page.</p>
-  <div class="panel">
-    <form id="analyzeForm">
-      <label for="urlInput">Public webpage URL</label>
-      <input id="urlInput" type="url" maxlength="2048" placeholder="https://example.com" required>
-      <div class="actions">
-        <button class="btn primary" id="analyzeButton" type="submit">Analyze Page</button>
-      </div>
-    </form>
-    <div id="analysisMessage" class="result" role="status"></div>
-    <div id="analysisResults" class="hidden">
-      <div class="finding"><strong>Page title</strong><div id="pageTitle"></div></div>
-      <div class="finding"><strong>Description</strong><div id="pageDescription"></div></div>
-      <div class="finding"><strong>Extracted links</strong><div id="pageLinks"></div></div>
-      <div class="actions"><button class="btn" id="saveAnalysis">Save Analysis to Findings</button></div>
-    </div>
-  </div>
-</section>
+    <div id="ticker" class="status-ticker">> PROFILING IN PROGRESS...</div>
 
-<section id="findings" class="page hidden">
-  <h1>Findings & Reports</h1>
-  <p class="sub">Review items you have saved during this browser session.</p>
-  <div class="panel">
-    <div class="actions">
-      <button class="btn primary" id="exportJson">Export JSON</button>
-      <button class="btn" id="exportCsv">Export CSV</button>
-      <button class="btn" id="clearFindings">Clear Findings</button>
+    <div class="console-grid">
+        <!-- Live Terminal Stream Logs -->
+        <div class="panel">
+            <div class="panel-title">> CYBER EXPLOIT LOG FEED</div>
+            <div id="output" class="log-box">socialscope BACKEND AWAKE. WAITING FOR ACQUISITION COMMANDS...</div>
+        </div>
+        <!-- Topology Visualization Graph -->
+        <div class="panel">
+            <div class="panel-title">> CYBER LINK GEOGRAPHY MAP</div>
+            <div id="network-graph"></div>
+        </div>
     </div>
-    <div id="findingsList" class="result"></div>
-  </div>
-  <p class="note">Findings are held in this page's memory. Refreshing or closing the page clears them. Export reports before leaving.</p>
-</section>
-</main>
 </div>
 
-<footer>SocialScope · Public-information research workspace</footer>
-
 <script>
-const $ = id => document.getElementById(id);
-let findings = [];
-let latestAnalysis = null;
-let latestUsername = null;
+    let network = null;
 
-const platforms = [
-  {name:"GitHub", url:u=>`https://github.com/${encodeURIComponent(u)}`},
-  {name:"Reddit", url:u=>`https://www.reddit.com/user/${encodeURIComponent(u)}/`},
-  {name:"YouTube", url:u=>`https://www.youtube.com/@${encodeURIComponent(u)}`},
-  {name:"TikTok", url:u=>`https://www.tiktok.com/@${encodeURIComponent(u)}`},
-  {name:"Instagram", url:u=>`https://www.instagram.com/${encodeURIComponent(u)}/`},
-  {name:"Pinterest", url:u=>`https://www.pinterest.com/${encodeURIComponent(u)}/`},
-  {name:"Twitch", url:u=>`https://www.twitch.tv/${encodeURIComponent(u)}`},
-  {name:"Medium", url:u=>`https://medium.com/@${encodeURIComponent(u)}`},
-  {name:"X", url:u=>`https://x.com/${encodeURIComponent(u)}`}
-];
+    function appendLog(element, text, colorClass = '') {
+        const span = document.createElement('span');
+        span.className = colorClass;
+        span.innerText = text + '\n';
+        element.appendChild(span);
+        element.scrollTop = element.scrollHeight;
+    }
 
-function go(page) {
-  document.querySelectorAll(".page").forEach(el=>el.classList.toggle("hidden",el.id!==page));
-  document.querySelectorAll(".navbtn").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
-  if(page==="findings") renderFindings();
-}
-document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
-document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.goto)));
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
-function addFinding(type, data) {
-  findings.unshift({type, saved_at:new Date().toISOString(), ...data});
-  $("findingCount").textContent = findings.length;
-  renderFindings();
-}
+    async function executeProfiling() {
+        const urlInput = document.getElementById('targetUrl').value.trim();
+        const outputBox = document.getElementById('output');
+        const ticker = document.getElementById('ticker');
+        
+        if(!urlInput) return alert("TARGET PARAMETER MISSING.");
+        
+        outputBox.innerHTML = '';
+        ticker.style.display = 'block';
+        
+        appendLog(outputBox, `[+] socialscope initializing system exploit routine: ${urlInput}`);
+        appendLog(outputBox, `[+] Spinning network infrastructure adapters...`);
 
-function validHandle(value) {
-  return /^[a-zA-Z0-9._-]{1,100}$/.test(value);
-}
+        try {
+            const response = await fetch('/api/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: urlInput })
+            });
+            const data = await response.json();
+            
+            if(data.error) {
+                appendLog(outputBox, `[!] ACQUISITION FAILED: ${data.error}`, 'vuln-alert');
+                ticker.style.display = 'none';
+                return;
+            }
 
-$("searchUsername").addEventListener("click",()=>{
-  const username=$("usernameInput").value.trim().replace(/^@/,"");
-  const results=$("profileResults");
-  results.replaceChildren();
-  $("usernameMessage").textContent="";
-  latestUsername=null;
+            appendLog(outputBox, `[✔] DNS Resolution Complete -> ${data.ip_address}`, 'success-alert');
+            
+            // 1. IP Geolocation Log Output
+            appendLog(outputBox, `\n[📡] INJECTING GEOLOCATION ENGINE...`);
+            appendLog(outputBox, `    - Country Node  : ${data.geo.country}`);
+            appendLog(outputBox, `    - Regional City : ${data.geo.city}`);
+            appendLog(outputBox, `    - Network Provider: ${data.geo.isp}`);
+            appendLog(outputBox, `    - Coordinates   : Lat ${data.geo.lat} / Lon ${data.geo.lon}`);
 
-  if(!validHandle(username)) {
-    $("usernameMessage").textContent="Enter a handle using letters, numbers, dots, underscores or hyphens.";
-    return;
-  }
+            // 2. Automated Brute-Force Matrix Ticker Animation
+            appendLog(outputBox, `\n[⚡] INITIATING BRUTE-FORCE VULNERABILITY SIMULATION...`);
+            const attackPayloads = [
+                "    -> Injecting dictionary array payloads...",
+                "    -> Attempting default administrator handshake bypass...",
+                "    -> Compiling cross-site stack execution payload...",
+                "    -> Checking database validation response loops..."
+            ];
+            
+            for (let payload of attackPayloads) {
+                await sleep(350);
+                appendLog(outputBox, payload, 'warn-alert');
+            }
 
-  latestUsername={username, profiles:platforms.map(p=>({platform:p.name,url:p.url(username)}))};
-  latestUsername.profiles.forEach(p=>{
-    const card=document.createElement("div"); card.className="profile";
-    const name=document.createElement("strong"); name.textContent=p.platform;
-    const link=document.createElement("a"); link.href=p.url; link.target="_blank";
-    link.rel="noopener noreferrer"; link.textContent="Open candidate profile ↗";
-    card.append(name,link); results.append(card);
-  });
-  $("usernameMessage").textContent="Generated "+platforms.length+" candidate links. Open them manually to assess whether they are accessible and relevant.";
-});
+            appendLog(outputBox, `[✔] Port Analysis Sweep Concluded. Open Vector Ports: ${data.open_ports.join(', ') || 'None verified'}`, 'warn-alert');
+            
+            appendLog(outputBox, `\n[⚙] AUDITING SECURITY ARCHITECTURE HEADERS:`);
+            Object.entries(data.security_headers).forEach(([k, v]) => {
+                appendLog(outputBox, `    - ${k}: ${v}`, v === 'Missing' ? 'vuln-alert' : 'success-alert');
+            });
 
-$("saveUsername").addEventListener("click",()=>{
-  if(!latestUsername) {
-    $("usernameMessage").textContent="Generate profile links first.";
-    return;
-  }
-  addFinding("username_search",latestUsername);
-  $("usernameMessage").textContent="Search saved to Findings.";
-});
+            appendLog(outputBox, `\n[☠] SYSTEM THREAT METRIC ASSESSMENT LOGS:`, data.vulnerabilities.length > 0 ? 'vuln-alert' : 'success-alert');
+            if(data.vulnerabilities.length > 0) {
+                data.vulnerabilities.forEach(v => appendLog(outputBox, `    x ${v}`, 'vuln-alert'));
+            } else {
+                appendLog(outputBox, `    + Zero standard signature exploit surfaces located.`, 'success-alert');
+            }
 
-$("analyzeForm").addEventListener("submit",async event=>{
-  event.preventDefault();
-  const url=$("urlInput").value.trim();
-  const button=$("analyzeButton");
-  $("analysisMessage").textContent="Analyzing public webpage…";
-  $("analysisResults").classList.add("hidden");
-  button.disabled=true;
-  latestAnalysis=null;
+            generateGraphLayout(urlInput, data);
 
-  try {
-    const response=await fetch("/api/analyze",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({url})
-    });
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.error||"Analysis failed.");
-    latestAnalysis=data;
-    $("pageTitle").textContent=data.title||"(No title found)";
-    $("pageDescription").textContent=data.description||"(No description found)";
-    const links=$("pageLinks"); links.replaceChildren();
-    (data.links||[]).forEach(href=>{
-      const line=document.createElement("div");
-      const a=document.createElement("a");
-      a.href=href; a.textContent=href; a.target="_blank";
-      a.rel="noopener noreferrer";
-      line.append(a); links.append(line);
-    });
-    $("analysisMessage").textContent="Analysis complete.";
-    $("analysisResults").classList.remove("hidden");
-  } catch(error) {
-    $("analysisMessage").textContent="Error: "+error.message;
-  } finally {
-    button.disabled=false;
-  }
-});
+        } catch (error) {
+            appendLog(outputBox, `[!] FATAL SYSTEM TIMEOUT BRIDGE BREAKAGE.`, 'vuln-alert');
+        } finally {
+            ticker.style.display = 'none';
+        }
+    }
 
-$("saveAnalysis").addEventListener("click",()=>{
-  if(!latestAnalysis) return;
-  addFinding("webpage_analysis",latestAnalysis);
-  $("analysisMessage").textContent="Analysis saved to Findings.";
-});
+    function generateGraphLayout(target, data) {
+        // Build nodes linking target server architecture and Geo Locations
+        const nodes = [
+            { id: 'root', label: target, color: { background: '#000', border: '#00ff66' }, shape: 'box', size: 25, font: { color: '#00ff66', size: 16 } },
+            { id: 'ip', label: `IP Address\n${data.ip_address}`, color: '#070a0e', shape: 'ellipse' },
+            { id: 'geo', label: `LOCATION\n${data.geo.city}, ${data.geo.country}\nISP: ${data.geo.isp.substring(0,15)}`, color: '#0f172a', shape: 'box', font: { color: '#ffaa00' } }
+        ];
 
-function renderFindings() {
-  const list=$("findingsList"); list.replaceChildren();
-  if(!findings.length) {
-    list.textContent="No saved findings yet.";
-    return;
-  }
-  findings.forEach((item,index)=>{
-    const div=document.createElement("div"); div.className="finding";
-    const title=document.createElement("strong");
-    title.textContent=`${index+1}. ${item.type.replaceAll("_"," ")} `;
-    const tag=document.createElement("span"); tag.className="tag"; tag.textContent="Saved";
-    const detail=document.createElement("div"); detail.className="small";
-    detail.textContent=item.username ? "Username: "+item.username : (item.url||"Webpage result");
-    const remove=document.createElement("button"); remove.className="btn";
-    remove.textContent="Remove"; remove.style.marginTop="8px";
-    remove.addEventListener("click",()=>{
-      findings.splice(index,1);
-      $("findingCount").textContent=findings.length;
-      renderFindings();
-    });
-    div.append(title,tag,detail,remove); list.append(div);
-  });
-}
+        const edges = [
+            { from: 'root', to: 'ip', label: 'RESOLVES', color: '#1e293b' },
+            { from: 'ip', to: 'geo', label: 'LOCATED_AT', color: '#ffaa00', width: 1.5 }
+        ];
 
-function download(filename, content, mime) {
-  const blob=new Blob([content],{type:mime});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download=filename; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-$("exportJson").addEventListener("click",()=>{
-  download("socialscope-report.json",JSON.stringify(findings,null,2),"application/json");
-});
-$("exportCsv").addEventListener("click",()=>{
-  const quote=value=>'"'+String(value??"").replaceAll('"','""')+'"';
-  const rows=[["type","saved_at","username","url","title","description","profiles","links"]];
-  findings.forEach(f=>rows.push([
-    f.type,f.saved_at,f.username||"",f.url||"",f.title||"",f.description||"",
-    (f.profiles||[]).map(p=>p.platform+": "+p.url).join(" | "),
-    (f.links||[]).join(" | ")
-  ]));
-  download("socialscope-report.csv",rows.map(r=>r.map(quote).join(",")).join("\r\n"),"text/csv;charset=utf-8");
-});
-$("clearFindings").addEventListener("click",()=>{
-  if(confirm("Clear all findings from this session?")) {
-    findings=[]; $("findingCount").textContent="0"; renderFindings();
-  }
-});
-</script>
-</body>
-  </html>
-    
+        // Ports Mapping
+        data.open_ports.forEach(port => {
+            const portId = `port_${port}`;
+            nodes.push({ id: portId, label: `PORT ${port}\nOPEN`, color: '#7c2d12', shape: 'square', font: { color: '#ff5500' } });
+            edges.push({ from: 'ip', to: portId, color: '#ff5500' });
+        });
+
+        // Vulnerabilities Mapping (Glowing crimson diamonds)
+        data.vulnerabilities.forEach((v, index) => {
+            const vulnId = `vuln_${index}`;
+  
