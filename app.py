@@ -8,18 +8,19 @@ from flask_cors import CORS
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
+# Fixed syntax arrays
 COMMON_SUBDOMAINS = ['www', 'mail', 'api', 'dev', 'vpn', 'server']
-PORTS_TO_CHECK =
+PORTS_TO_CHECK = [21, 22, 80, 443, 8080]
 
-# Expanded Darknet Target List including media and gaming elements
+# Supported platform vectors for user mapping checks
 SOCIAL_PLATFORMS = {
-    "GitHub": "https://github.com/{}",
+    "GitHub": "https://github.com{}",
     "Reddit": "https://reddit.com{}",
     "Twitter/X": "https://twitter.com{}",
     "Instagram": "https://instagram.com{}",
     "TikTok": "https://tiktok.com@{}",
     "Twitch": "https://twitch.tv{}",
-    "YouTube": "https://www.youtube.com/@{}",
+    "YouTube": "https://youtube.com@{}",
     "Pinterest": "https://pinterest.com{}/",
     "Spotify": "https://spotify.com{}",
     "Steam": "https://steamcommunity.com{}"
@@ -55,7 +56,7 @@ def profile_username(username):
     return report
 
 def evaluate_domain(target_url):
-    domain = target_url.replace("https://", "").replace("http://", "").split('/').strip()
+    domain = target_url.replace("https://", "").replace("http://", "").split('/')[0].strip()
     report = {
         "type": "domain",
         "domain": domain, 
@@ -142,4 +143,4 @@ def scan():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-                                                                             
+        
