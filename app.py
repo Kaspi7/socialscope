@@ -1,550 +1,368 @@
 
-import os
-import re
-import ssl
-import socket
 import ipaddress
-from datetime import datetime, timezone
-from urllib.parse import urlparse
+import re
+import socket
+from urllib.parse import quote, urlparse
 
+import dns.resolver
 import requests
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
+from flask import Flask, jsonify, render_template, request, Response
 
-app = Flask(__name__, template_folder="templates")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
-CORS(app)
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 
-TIMEOUT = 6
-COMMON_SUBDOMAINS = [
-    "www", "api", "mail", "blog", "dev", "docs", "status"
-]
+TIMEOUT = 8
 
 PLATFORMS = {
+    "Instagram": "https://www.google.com/search?q=site%3Ainstagram.com%2F+{}",
+    "Facebook": "https://www.google.com/search?q=site%3Afacebook.com+{}",
+    "Discord": "https://www.google.com/search?q=site%3Adiscord.com+{}",
+    "TikTok": "https://www.google.com/search?q=site%3Atiktok.com%2F%40{}",
+    "Reddit": "https://www.google.com/search?q=site%3Areddit.com%2Fu%2F{}",
     "GitHub": "https://github.com/{}",
-    "Reddit": "https://www.reddit.com/user/{}/",
+    "YouTube": "https://www.youtube.com/results?search_query={}",
     "X": "https://x.com/{}",
-    "Instagram": "https://www.instagram.com/{}/",
-    "TikTok": "https://www.tiktok.com/@{}",
+    "Pinterest": "https://www.pinterest.com/{}",
     "Twitch": "https://www.twitch.tv/{}",
-    "Pinterest": "https://www.pinterest.com/{}/",
-    "Steam": "https://steamcommunity.com/id/{}/",
-    "YouTube": "https://www.youtube.com/@{}",
-    "Medium": "https://medium.com/@{}",
+    "Telegram": "https://t.me/{}",
+    "LinkedIn": "https://www.google.com/search?q=site%3Alinkedin.com%2Fin%2F+{}",
 }
 
-session = requests.Session()
-session.headers.update({
-    "User-Agent": "SocialScope/1.0 public-web-security-checker"
-})
 
+def valid_domain(value):
+    value = value.strip().lower().rstrip(".")
+    if not value or len(value) > 253 or "://" in value:
+        return None
 
-def normalize_domain(target):
-    target = target.strip()
-
-    if not target:
-        raise ValueError("Enter a domain.")
-
-    if "://" not in target:
-        target = "https://" + target
-
-    parsed = urlparse(target)
-
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError("Only HTTP and HTTPS are supported.")
-
-    if not parsed.hostname:
-        raise ValueError("Invalid URL.")
-
-    if parsed.username or parsed.password:
-        raise ValueError("URLs containing credentials are not accepted.")
-
-    if parsed.port not in (None, 80, 443):
-        raise ValueError(
-            "Custom ports are not supported by this scanner."
-        )
-
-    domain = parsed.hostname.rstrip(".").lower()
+    if value.startswith("*.") or "/" in value or "@" in value:
+        return None
 
     try:
-        domain = domain.encode("idna").decode("ascii")
+        value = value.encode("idna").decode("ascii")
     except UnicodeError:
-        raise ValueError("Invalid domain name.")
+        return None
 
-    if domain == "localhost" or "." not in domain:
-        raise ValueError("Enter a public domain name.")
+    labels = value.split(".")
+    if len(labels) < 2:
+        return None
 
-    try:
-        ip = ipaddress.ip_address(domain)
-        if not ip.is_global:
-            raise ValueError("Private and non-public IPs are blocked.")
-        return domain
-    except ValueError as exc:
-        if "Private and non-public" in str(exc):
-            raise
-
-    labels = domain.split(".")
     for label in labels:
         if (
             not label
             or len(label) > 63
-            or not re.fullmatch(r"[a-z0-9-]+", label)
-            or label.startswith("-")
-            or label.endswith("-")
+            or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label)
         ):
-            raise ValueError("Invalid domain name.")
+            return None
 
-    return domain
+    return value
 
 
-def resolve_public_addresses(domain):
+def resolve_public_host(host):
+    """Return public IP addresses only; reject private and special-use targets."""
     try:
-        answers = socket.getaddrinfo(
-            domain, 443, type=socket.SOCK_STREAM
-        )
-    except socket.gaierror:
-        raise ValueError("Domain could not be resolved.")
-
-    addresses = sorted({answer[4][0] for answer in answers})
+        literal = ipaddress.ip_address(host)
+        addresses = [literal]
+    except ValueError:
+        try:
+            records = socket.getaddrinfo(
+                host, None, type=socket.SOCK_STREAM
+            )
+            addresses = list({
+                ipaddress.ip_address(item[4][0])
+                for item in records
+            })
+        except (socket.gaierror, OSError, ValueError):
+            return None
 
     if not addresses:
-        raise ValueError("No IP addresses found.")
+        return None
 
-    for address in addresses:
-        if not ipaddress.ip_address(address).is_global:
-            raise ValueError(
-                "Domain resolves to a non-public IP. Scan blocked."
-            )
+    if any(not address.is_global for address in addresses):
+        return None
 
     return addresses
 
 
-def check_username(username):
-    username = username.strip().lstrip("@")
+def clean_target(value):
+    """Accept a hostname or HTTP(S) URL and return a validated public hostname."""
+    value = (value or "").strip()
+    if not value or len(value) > 2048:
+        return None
 
-    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,50}", username):
-        raise ValueError("Invalid username format.")
+    if "://" not in value:
+        value = "https://" + value
 
-    results = []
+    try:
+        parsed = urlparse(value)
+        if parsed.scheme not in ("http", "https"):
+            return None
+        if parsed.username or parsed.password:
+            return None
+        if not parsed.hostname:
+            return None
 
-    for platform, template in PLATFORMS.items():
-        url = template.format(username)
-
-        item = {
-            "platform": platform,
-            "url": url,
-            "status": "Unknown",
-            "http_status": None
-        }
+        host = parsed.hostname.rstrip(".").lower()
+        domain = valid_domain(host)
 
         try:
-            response = session.get(
-                url,
-                timeout=TIMEOUT,
-                allow_redirects=False,
-                stream=True
-            )
-
-            item["http_status"] = response.status_code
-
-            if response.status_code == 200:
-                item["status"] = "Possible match - verify manually"
-            elif response.status_code == 404:
-                item["status"] = "HTTP 404 - not found"
-            elif response.status_code in (401, 403, 429):
-                item["status"] = "Restricted or rate limited"
-            else:
-                item["status"] = f"HTTP {response.status_code}"
-
-            response.close()
-
-        except requests.RequestException:
-            item["status"] = "Request failed or timed out"
-
-        results.append(item)
-
-    return {
-        "type": "username",
-        "target": username,
-        "found_accounts": results,
-        "note": (
-            "These are candidate profile URLs, not confirmed accounts "
-            "or proof that profiles belong to the same person."
-        )
-    }
-
-
-def check_tls(domain):
-    result = {
-        "status": "NOT TESTED",
-        "subject": None,
-        "issuer": None,
-        "expires": None,
-        "days_remaining": None,
-        "error": None
-    }
-
-    context = ssl.create_default_context()
-
-    try:
-        with socket.create_connection(
-            (domain, 443), timeout=TIMEOUT
-        ) as raw_socket:
-            with context.wrap_socket(
-                raw_socket, server_hostname=domain
-            ) as tls_socket:
-                cert = tls_socket.getpeercert()
-
-        result["status"] = "PASS"
-        result["subject"] = str(cert.get("subject", "Unknown"))
-        result["issuer"] = str(cert.get("issuer", "Unknown"))
-        result["expires"] = cert.get("notAfter")
-
-        if result["expires"]:
-            expiry = datetime.strptime(
-                result["expires"], "%b %d %H:%M:%S %Y %Z"
-            ).replace(tzinfo=timezone.utc)
-
-            remaining = (
-                expiry - datetime.now(timezone.utc)
-            ).days
-
-            result["days_remaining"] = remaining
-
-            if remaining < 0:
-                result["status"] = "EXPIRED"
-            elif remaining <= 30:
-                result["status"] = "EXPIRING SOON"
-
-    except (OSError, ssl.SSLError, ValueError) as exc:
-        result["status"] = "REVIEW"
-        result["error"] = str(exc)[:250]
-
-    return result
-
-
-def add_check(checks, name, status, severity, evidence, fix):
-    checks.append({
-        "name": name,
-        "status": status,
-        "severity": severity,
-        "evidence": evidence,
-        "recommendation": fix
-    })
-
-
-def check_domain(domain):
-    addresses = resolve_public_addresses(domain)
-    checks = []
-    subdomains = []
-    public_files = []
-    cookies = []
-    server = "Not disclosed"
-    headers_report = {}
-
-    # TLS certificate inspection
-    tls = check_tls(domain)
-
-    if tls["status"] == "PASS":
-        add_check(
-            checks, "TLS certificate", "PASS", "Info",
-            "Certificate validation succeeded.",
-            "Keep the certificate renewed and correctly configured."
-        )
-    elif tls["status"] == "EXPIRING SOON":
-        add_check(
-            checks, "TLS certificate", "REVIEW", "Medium",
-            f"Certificate expires in {tls['days_remaining']} days.",
-            "Renew the certificate before expiry."
-        )
-    else:
-        add_check(
-            checks, "TLS certificate", "REVIEW", "High",
-            tls["error"] or tls["status"],
-            "Check certificate validity, hostname, chain and TLS settings."
-        )
-
-    # HTTPS response header review
-    response = None
-    try:
-        response = session.get(
-            f"https://{domain}/",
-            timeout=TIMEOUT,
-            allow_redirects=False,
-            stream=True
-        )
-
-        headers = response.headers
-        server = headers.get("Server", "Not disclosed")
-
-        tests = [
-            (
-                "Content-Security-Policy",
-                "Content Security Policy",
-                "Medium",
-                "Review a restrictive CSP appropriate for the application."
-            ),
-            (
-                "Strict-Transport-Security",
-                "HTTP Strict Transport Security",
-                "Low",
-                "Configure HSTS after confirming HTTPS works throughout."
-            ),
-            (
-                "X-Content-Type-Options",
-                "MIME sniffing protection",
-                "Low",
-                "Consider X-Content-Type-Options: nosniff."
-            ),
-            (
-                "X-Frame-Options",
-                "Framing protection",
-                "Low",
-                "Consider CSP frame-ancestors or X-Frame-Options."
-            ),
-            (
-                "Referrer-Policy",
-                "Referrer information policy",
-                "Info",
-                "Set an appropriate Referrer-Policy for the application."
-            ),
-            (
-                "Permissions-Policy",
-                "Browser feature policy",
-                "Info",
-                "Disable browser features the application does not need."
-            )
-        ]
-
-        for header, name, severity, recommendation in tests:
-            present = bool(headers.get(header))
-            headers_report[header] = (
-                "Present" if present else "Missing"
-            )
-
-            add_check(
-                checks,
-                name,
-                "PASS" if present else "REVIEW",
-                "Info" if present else severity,
-                f"{header} {'was observed' if present else 'was not observed'}.",
-                recommendation
-            )
-
-        # Report cookie attributes only; never store cookie values.
-        raw_headers = response.raw.headers
-        set_cookie = raw_headers.getlist("Set-Cookie")
-
-        for index, raw_cookie in enumerate(set_cookie, 1):
-            parts = [
-                part.strip() for part in raw_cookie.split(";")
-            ]
-            attributes = {
-                part.split("=", 1)[0].lower()
-                for part in parts[1:] if part
-            }
-
-            flags = {
-                "secure": "secure" in attributes,
-                "httponly": "httponly" in attributes,
-                "samesite": "samesite" in attributes
-            }
-
-            cookies.append({
-                "cookie_number": index,
-                "flags": flags
-            })
-
-            for flag, label in [
-                ("secure", "Secure"),
-                ("httponly", "HttpOnly"),
-                ("samesite", "SameSite")
-            ]:
-                if not flags[flag]:
-                    add_check(
-                        checks,
-                        f"Cookie {index}: {label}",
-                        "REVIEW",
-                        "Low",
-                        f"Observed cookie lacks the {label} attribute.",
-                        f"Review whether this cookie requires {label}."
-                    )
-
-        if not set_cookie:
-            add_check(
-                checks, "Cookie security", "NOT TESTED", "Info",
-                "Homepage did not issue a Set-Cookie header.",
-                "Cookie security requires observing relevant cookies."
-            )
-
-    except requests.RequestException as exc:
-        add_check(
-            checks, "HTTPS response", "NOT TESTED", "Info",
-            str(exc)[:250],
-            "Verify the website is reachable and retry."
-        )
-    finally:
-        if response is not None:
-            response.close()
-
-    # Plain HTTP redirect check
-    response = None
-    try:
-        response = session.get(
-            f"http://{domain}/",
-            timeout=TIMEOUT,
-            allow_redirects=False,
-            stream=True
-        )
-
-        location = response.headers.get("Location", "")
-        redirects = (
-            response.status_code in (301, 302, 303, 307, 308)
-            and location.lower().startswith("https://")
-        )
-
-        add_check(
-            checks,
-            "HTTP to HTTPS redirect",
-            "PASS" if redirects else "REVIEW",
-            "Info" if redirects else "Medium",
-            f"HTTP status: {response.status_code}; "
-            f"HTTPS redirect: {'confirmed' if redirects else 'not confirmed'}.",
-            "Redirect HTTP traffic to HTTPS."
-        )
-
-    except requests.RequestException as exc:
-        add_check(
-            checks, "HTTP redirect", "NOT TESTED", "Info",
-            str(exc)[:250],
-            "Check the HTTP-to-HTTPS redirect manually."
-        )
-    finally:
-        if response is not None:
-            response.close()
-
-    # Only inspect standard public metadata paths.
-    for path in (
-        "/robots.txt",
-        "/sitemap.xml",
-        "/.well-known/security.txt"
-    ):
-        response = None
-        try:
-            response = session.get(
-                f"https://{domain}{path}",
-                timeout=TIMEOUT,
-                allow_redirects=False,
-                stream=True
-            )
-
-            if response.status_code == 200:
-                public_files.append({
-                    "path": path,
-                    "status": 200
-                })
-
-        except requests.RequestException:
+            ipaddress.ip_address(host)
+            domain = host
+        except ValueError:
             pass
-        finally:
-            if response is not None:
-                response.close()
 
-    # Common subdomain DNS discovery only
-    for prefix in COMMON_SUBDOMAINS:
-        name = f"{prefix}.{domain}"
-        try:
-            found = sorted({
-                answer[4][0]
-                for answer in socket.getaddrinfo(
-                    name, 443, type=socket.SOCK_STREAM
-                )
-            })
+        if not domain:
+            return None
 
-            if found and all(
-                ipaddress.ip_address(ip).is_global for ip in found
-            ):
-                subdomains.append({
-                    "subdomain": name,
-                    "ip": found[0]
-                })
-        except (socket.gaierror, ValueError):
-            continue
+        port = parsed.port
+        if port is not None and port not in (80, 443):
+            return None
 
-    # These counts are preliminary configuration observations.
-    summary = {}
-    for severity in ("High", "Medium", "Low"):
-        summary[severity.lower()] = sum(
-            1 for item in checks
-            if item["severity"] == severity
-            and item["status"] == "REVIEW"
-        )
+        if not resolve_public_host(domain):
+            return None
 
-    return {
-        "type": "domain",
-        "domain": domain,
-        "ip_address": addresses[0],
-        "all_ip_addresses": addresses,
-        "server": server,
-        "tls": tls,
-        "security_headers": headers_report,
-        "security_checks": checks,
-        "risk_summary": summary,
-        "cookies": cookies,
-        "public_files": public_files,
-        "subdomains": subdomains,
-        "note": (
-            "Results are limited observations, not proof of exploitability. "
-            "This tool does not test application injection, authentication "
-            "bypasses, or stolen credentials."
-        )
-    }
+        return domain
+    except (ValueError, UnicodeError):
+        return None
 
 
-@app.route("/", methods=["GET"])
+@app.get("/")
 def home():
     return render_template("index.html")
 
 
-@app.route("/health", methods=["GET"])
+@app.get("/health")
 def health():
     return jsonify({"status": "ok"})
 
 
-@app.route("/api/scan", methods=["POST"])
-def scan():
+@app.post("/api/account")
+def account_search():
     data = request.get_json(silent=True) or {}
-    target = data.get("url", "")
+    username = str(data.get("username", "")).strip().lstrip("@")
 
-    if not isinstance(target, str):
-        return jsonify({"error": "Target must be text."}), 400
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,50}", username):
+        return jsonify({"error": "Invalid username"}), 400
 
-    target = target.strip()
+    encoded = quote(username, safe="")
+    results = {
+        platform: template.format(encoded)
+        for platform, template in PLATFORMS.items()
+    }
 
-    if not target or len(target) > 2048:
-        return jsonify({"error": "Enter a valid target."}), 400
+    return jsonify({
+        "type": "account",
+        "query": username,
+        "results": results
+    })
+
+
+@app.post("/api/email")
+def email_search():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email", "")).strip()
+
+    if len(email) > 254 or not re.fullmatch(
+        r"[^@\s]+@[^@\s]+\.[^@\s]+", email
+    ):
+        return jsonify({"error": "Invalid email format"}), 400
+
+    domain = email.rsplit("@", 1)[1].lower()
+    result = {
+        "type": "email",
+        "email": email,
+        "domain": domain,
+        "format_valid": True,
+        "mx_records": [],
+        "mx_check": "unavailable"
+    }
 
     try:
-        if target.startswith("@"):
-            result = check_username(target)
-        elif "://" not in target and "/" not in target and "." not in target:
-            result = check_username(target)
-        else:
-            domain = normalize_domain(target)
-            result = check_domain(domain)
-
-        return jsonify(result)
-
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        answers = dns.resolver.resolve(domain, "MX", lifetime=TIMEOUT)
+        result["mx_records"] = sorted(
+            [str(answer.exchange).rstrip(".") for answer in answers]
+        )
+        result["mx_check"] = "found" if result["mx_records"] else "none"
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        result["mx_check"] = "none"
     except Exception:
-        app.logger.exception("SocialScope scan failed")
+        result["mx_check"] = "unavailable"
+
+    return jsonify(result)
+
+
+@app.post("/api/domain")
+def domain_search():
+    data = request.get_json(silent=True) or {}
+    domain = valid_domain(str(data.get("domain", "")))
+
+    if not domain:
+        return jsonify({"error": "Invalid domain"}), 400
+
+    result = {
+        "type": "domain",
+        "domain": domain,
+        "records": {}
+    }
+
+    for record_type in ("A", "AAAA", "MX", "NS", "TXT"):
+        try:
+            answers = dns.resolver.resolve(
+                domain, record_type, lifetime=TIMEOUT
+            )
+            if record_type == "TXT":
+                values = [
+                    b"".join(answer.strings).decode("utf-8", "replace")
+                    for answer in answers
+                ]
+            elif record_type == "MX":
+                values = [
+                    f"{answer.preference} {str(answer.exchange).rstrip('.')}"
+                    for answer in answers
+                ]
+            else:
+                values = [str(answer).rstrip(".") for answer in answers]
+
+            result["records"][record_type] = values
+        except Exception:
+            result["records"][record_type] = []
+
+    return jsonify(result)
+
+
+@app.post("/api/geolocate")
+def geolocate():
+    data = request.get_json(silent=True) or {}
+    raw_ip = str(data.get("ip", "")).strip()
+
+    try:
+        address = ipaddress.ip_address(raw_ip)
+    except ValueError:
+        return jsonify({"error": "Invalid IP address"}), 400
+
+    if not address.is_global:
+        return jsonify({"error": "A public IP address is required"}), 400
+
+    try:
+        response = requests.get(
+            f"http://ip-api.com/json/{address}",
+            params={
+                "fields": "status,message,country,regionName,city,isp,org,as,lat,lon,query"
+            },
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("status") != "success":
+            return jsonify({"error": data.get("message", "Lookup failed")}), 502
+
         return jsonify({
-            "error": "Unexpected scan error. Check Render logs."
-        }), 500
+            "type": "geolocation",
+            "ip": data.get("query"),
+            "country": data.get("country"),
+            "region": data.get("regionName"),
+            "city": data.get("city"),
+            "isp": data.get("isp"),
+            "organization": data.get("org"),
+            "asn": data.get("as"),
+            "latitude": data.get("lat"),
+            "longitude": data.get("lon")
+        })
+    except requests.RequestException:
+        return jsonify({"error": "Geolocation service unavailable"}), 502
+
+
+@app.post("/api/vulnerability")
+def vulnerability_check():
+    data = request.get_json(silent=True) or {}
+    host = clean_target(str(data.get("url", "")))
+
+    if not host:
+        return jsonify({"error": "Invalid or non-public hostname"}), 400
+
+    findings = []
+    checked = None
+    errors = []
+
+    for scheme in ("https", "http"):
+        url = f"{scheme}://{host}/"
+        try:
+            response = requests.get(
+                url,
+                timeout=TIMEOUT,
+                allow_redirects=False,
+                stream=True,
+                headers={"User-Agent": "SocialScope-Security-Check/1.0"}
+            )
+            checked = {
+                "url": url,
+                "status_code": response.status_code,
+                "headers": dict(response.headers)
+            }
+            response.close()
+            break
+        except requests.RequestException:
+            errors.append(scheme)
+
+    if checked is None:
+        return jsonify({
+            "error": "Could not connect to the public website",
+            "failed_attempts": errors
+        }), 502
+
+    headers = {
+        key.lower(): value
+        for key, value in checked["headers"].items()
+    }
+
+    checks = [
+        ("strict-transport-security", "HSTS"),
+        ("content-security-policy", "Content Security Policy"),
+        ("x-content-type-options", "X-Content-Type-Options"),
+        ("x-frame-options", "X-Frame-Options"),
+        ("referrer-policy", "Referrer-Policy")
+    ]
+
+    for key, label in checks:
+        if key not in headers:
+            findings.append({
+                "check": label,
+                "status": "missing",
+                "severity": "low"
+            })
+
+    if checked["url"].startswith("http://"):
+        findings.append({
+            "check": "HTTPS",
+            "status": "HTTP endpoint responded without HTTPS",
+            "severity": "medium"
+        })
+
+    return jsonify({
+        "type": "security_headers",
+        "target": host,
+        "url_checked": checked["url"],
+        "http_status": checked["status_code"],
+        "findings": findings,
+        "finding_count": len(findings)
+    })
+
+
+@app.post("/api/export")
+def export_json():
+    data = request.get_json(silent=True) or {}
+    import json
+
+    payload = json.dumps(data, indent=2, ensure_ascii=False)
+    return Response(
+        payload,
+        mimetype="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="socialscope-export.json"'
+        }
+    )
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-            
+    app.run(host="0.0.0.0", port=10000, debug=False)
+    
