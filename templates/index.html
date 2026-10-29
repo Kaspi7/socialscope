@@ -1,245 +1,116 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SocialScope | OSINT Console</title>
+<meta name="theme-color" content="#09090b">
+<title>SocialScope — Public Web Intelligence</title>
 <style>
-:root {
-  color-scheme: dark;
-  --bg:#080b12; --panel:#101725; --line:#263448;
-  --text:#e7eef8; --muted:#8fa2ba; --accent:#45e0b2;
-  --red:#ff667e; --yellow:#f5c96a;
-}
-* { box-sizing:border-box; }
-body {
-  margin:0; background:var(--bg); color:var(--text);
-  font:15px system-ui,-apple-system,sans-serif;
-}
-header {
-  padding:22px 16px; border-bottom:1px solid var(--line);
-  background:#0c121d;
-}
-header h1 { margin:0; font-size:25px; letter-spacing:1px; }
-header h1 span { color:var(--accent); }
-header p { color:var(--muted); margin:7px 0 0; }
-main { max-width:1000px; margin:auto; padding:18px 13px 40px; }
-nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
-button, input {
-  font:inherit; border-radius:8px; padding:11px 12px;
-}
-button {
-  cursor:pointer; border:1px solid var(--line);
-  background:#172337; color:var(--text);
-}
-button:hover { border-color:var(--accent); }
-nav button.active, .primary {
-  background:#10382f; border-color:var(--accent); color:#a8ffe2;
-}
-.panel {
-  background:var(--panel); border:1px solid var(--line);
-  border-radius:12px; padding:16px; margin-bottom:15px;
-}
-.panel h2 { font-size:19px; margin:0 0 8px; }
-.help { color:var(--muted); line-height:1.5; margin:0 0 14px; }
-form { display:flex; gap:8px; flex-wrap:wrap; }
-input { flex:1 1 240px; min-width:0; color:var(--text);
-  background:#080e18; border:1px solid var(--line); }
-input:focus { outline:1px solid var(--accent); }
-.results { margin-top:14px; display:grid; gap:10px; }
-.item {
-  padding:13px; border:1px solid var(--line);
-  border-radius:9px; overflow-wrap:anywhere;
-}
-.item h3 { margin:0 0 8px; font-size:16px; }
-.item p { color:var(--muted); margin:5px 0; overflow-wrap:anywhere; }
-a { color:var(--accent); overflow-wrap:anywhere; }
-.pill { font-size:12px; color:var(--yellow); }
-.hidden { display:none; }
-pre {
-  white-space:pre-wrap; overflow-wrap:anywhere; color:#c6f9e8;
-  background:#080e18; border-radius:8px; padding:12px;
-}
-#status { color:var(--muted); margin:10px 0; }
-footer { color:var(--muted); font-size:12px; line-height:1.6; padding-top:8px; }
+:root{--bg:#09090b;--panel:#121216;--panel2:#17171d;--line:#302027;--red:#ef233c;--red2:#ff5266;--text:#f4eef0;--muted:#a79ba0;--green:#63d7a1;--amber:#f2bd5b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% -10%,#281017 0,transparent 34%),var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}.sidebar{border-right:1px solid var(--line);background:#0c0c0f;padding:22px 14px;display:flex;flex-direction:column;gap:24px}.brand{display:flex;align-items:center;gap:10px;padding:0 8px}.logo{width:36px;height:36px;border:1px solid #7b2434;background:#200d12;color:var(--red2);border-radius:11px;display:grid;place-items:center;font-size:20px}.brand strong{letter-spacing:1.6px;font-size:14px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}.navgroup{display:grid;gap:5px}.navlabel{padding:0 10px;color:#746a6e;font-size:10px;font-weight:800;letter-spacing:1.5px;margin-bottom:3px}.nav{border:1px solid transparent;background:transparent;color:#bdb2b6;text-align:left;border-radius:9px;padding:10px;display:flex;align-items:center;gap:10px}.nav:hover,.nav.active{background:#211116;color:#fff;border-color:#48202a}.nav.active .ico{color:var(--red2)}.ico{color:#9e7b83;width:18px;text-align:center;font-size:16px}.sidebarfoot{margin-top:auto;border:1px solid var(--line);background:#111014;border-radius:10px;padding:12px;color:var(--muted);font-size:11px}.dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:7px;box-shadow:0 0 9px #63d7a155}.main{min-width:0;padding:24px clamp(14px,3vw,36px) 40px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:26px}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:800;color:var(--red2)}h1{font-size:clamp(23px,3vw,32px);line-height:1.15;margin:5px 0 7px;letter-spacing:-.7px}.sub{color:var(--muted);margin:0}.status{border:1px solid var(--line);border-radius:30px;padding:8px 12px;color:#c8bdc1;font-size:11px;white-space:nowrap}.view{display:none}.view.active{display:block}.searchhero{background:linear-gradient(120deg,#1c0e13,#111115 65%);border:1px solid #51202c;border-radius:15px;padding:20px;margin-bottom:18px}.searchrow{display:flex;gap:9px;margin-top:12px}.field{width:100%;min-width:0;background:#09090c;border:1px solid #3a2a30;border-radius:9px;padding:12px 13px;color:var(--text);outline:none}.field:focus{border-color:var(--red);box-shadow:0 0 0 3px #ef233c18}.btn{border:1px solid var(--red);background:var(--red);color:white;border-radius:9px;padding:11px 15px;font-weight:700;white-space:nowrap}.btn:hover{background:#d91c34}.btn.secondary{background:#191419;border-color:#4a2931;color:#f2e7e9}.btn.secondary:hover{border-color:var(--red)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.card{border:1px solid var(--line);background:linear-gradient(145deg,#151419,#101014);border-radius:12px;padding:16px;min-width:0}.toolcard{cursor:pointer;transition:transform .15s,border-color .15s}.toolcard:hover{transform:translateY(-2px);border-color:#7e2c3b}.tooltop{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.toolicon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#281016;color:var(--red2);font-size:17px}.tag{font-size:9px;letter-spacing:.8px;border:1px solid #45242d;border-radius:20px;padding:4px 7px;color:#d99aa4}.card h3{margin:0 0 5px;font-size:14px}.card p{color:var(--muted);font-size:12px;margin:0}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:24px 0 12px}.sectionhead h2{font-size:15px;margin:0}.muted{color:var(--muted)}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.formrow{display:grid;gap:7px}.formrow label{font-size:11px;color:#c8b9be;font-weight:700}.full{grid-column:1/-1}.output{margin-top:16px;display:grid;gap:10px}.result{border:1px solid var(--line);border-radius:10px;padding:13px;background:#0e0e12;overflow-wrap:anywhere}.resulthead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.pill{border:1px solid #443039;color:#cbbdc2;border-radius:30px;padding:3px 8px;font-size:10px}.pill.high{color:#ff8b98;border-color:#80313f}.pill.medium{color:#f2bd5b;border-color:#6b5129}.pill.low{color:#d6b1b8}.pill.pass{color:var(--green);border-color:#285844}.pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#09090c;border:1px solid #282127;padding:12px;border-radius:9px;color:#d8cdd1;font:11px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;max-height:360px;overflow:auto}.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.check{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:9px;padding:11px;color:#d8cbd0;font-size:12px}.check input{accent-color:var(--red);margin-top:3px}.notice{border:1px solid #483039;background:#181116;color:#c8b8bd;padding:11px;border-radius:9px;font-size:11px;margin-top:12px}.empty{padding:25px;text-align:center;color:var(--muted);border:1px dashed #3a2b31;border-radius:10px}.loading{color:var(--red2)}a{color:#ff8291}footer{color:#645b5f;font-size:10px;margin-top:28px}
+@media(max-width:850px){.app{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:12px;gap:12px}.brand{padding:0 4px}.navgroup{display:flex;overflow-x:auto}.navlabel{display:none}.nav{white-space:nowrap;padding:9px}.sidebarfoot{display:none}.main{padding-top:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.grid,.formgrid,.checklist{grid-template-columns:1fr}.searchrow{flex-direction:column}.btn{width:100%}.topbar{align-items:flex-start}.status{font-size:10px}.card{padding:13px}.full{grid-column:auto}}
 </style>
 </head>
 <body>
-<header>
-  <h1><span>Social</span>Scope</h1>
-  <p>Public-web intelligence · Geolocation · Security assessment</p>
-</header>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">⌁</div><div><strong>SOCIALSCOPE</strong><small>PUBLIC WEB INTELLIGENCE</small></div></div>
+  <div class="navgroup">
+    <div class="navlabel">WORKSPACE</div>
+    <button class="nav active" data-view="dashboard"><span class="ico">▦</span>Dashboard</button>
+    <button class="nav" data-view="accounts"><span class="ico">◎</span>Username Search</button>
+    <button class="nav" data-view="email"><span class="ico">@</span>Email OSINT</button>
+    <button class="nav" data-view="domain"><span class="ico">⌘</span>Domain Scanner</button>
+    <button class="nav" data-view="ip"><span class="ico">⌖</span>IP Intelligence</button>
+    <button class="nav" data-view="social"><span class="ico">◈</span>Social Security</button>
+    <button class="nav" data-view="proxy"><span class="ico">⇄</span>Proxy Check</button>
+    <button class="nav" data-view="graph"><span class="ico">⌘</span>Graph & Reports</button>
+  </div>
+  <div class="sidebarfoot"><span class="dot"></span><span id="healthText">Checking backend status…</span><br><br>SocialScope · v1.0</div>
+</aside>
+<main class="main">
+  <header class="topbar">
+    <div><div class="eyebrow">INTELLIGENCE WORKSPACE / <span id="crumb">OVERVIEW</span></div><h1 id="pageTitle">Investigation dashboard</h1><p class="sub">Public-web intelligence and security assessment.</p></div>
+    <div class="status"><span class="dot"></span>LOCAL MODULES</div>
+  </header>
 
-<main>
-<nav id="tabs">
-  <button class="active" data-tab="account">Account Search</button>
-  <button data-tab="domain">Domain OSINT</button>
-  <button data-tab="email">Email Check</button>
-  <button data-tab="geo">IP Geolocation</button>
-  <button data-tab="vuln">Vulnerability Test</button>
-</nav>
+  <section class="view active" id="view-dashboard">
+    <div class="searchhero">
+      <div class="eyebrow">QUICK INVESTIGATION</div><h2 style="margin:5px 0;font-size:18px">What are you investigating?</h2>
+      <p class="sub">Start with a public username, email domain, website, or public IP.</p>
+      <div class="searchrow"><input class="field" id="quickInput" placeholder="Username, email, domain, or public IP"><button class="btn" id="quickBtn">Analyze →</button></div>
+    </div>
+    <div class="sectionhead"><h2>Tools</h2><span class="muted" style="font-size:11px">SELECT A MODULE</span></div>
+    <div class="grid">
+      <div class="card toolcard" data-go="accounts"><div class="tooltop"><div class="toolicon">◎</div><span class="tag">OSINT</span></div><h3>Username Search</h3><p>Check public profile URLs across supported platforms.</p></div>
+      <div class="card toolcard" data-go="email"><div class="tooltop"><div class="toolicon">@</div><span class="tag">OSINT</span></div><h3>Email Intelligence</h3><p>Validate syntax and inspect the email domain's DNS.</p></div>
+      <div class="card toolcard" data-go="domain"><div class="tooltop"><div class="toolicon">⌘</div><span class="tag">SECURITY</span></div><h3>Domain Scanner</h3><p>Review TLS, HTTP headers, cookies, and DNS resolution.</p></div>
+      <div class="card toolcard" data-go="ip"><div class="tooltop"><div class="toolicon">⌖</div><span class="tag">NETWORK</span></div><h3>IP Intelligence</h3><p>Approximate geolocation, ISP/ASN, and timezone.</p></div>
+      <div class="card toolcard" data-go="social"><div class="tooltop"><div class="toolicon">◈</div><span class="tag">ACCOUNT SAFETY</span></div><h3>Social Security Audit</h3><p>Audit privacy settings, MFA, recovery, sessions, and app permissions.</p></div>
+      <div class="card toolcard" data-go="proxy"><div class="tooltop"><div class="toolicon">⇄</div><span class="tag">PRIVACY</span></div><h3>Proxy Verification</h3><p>Test a proxy from the server and inspect the observed IP.</p></div>
+    </div>
+    <div class="sectionhead"><h2>Recent activity</h2><button class="btn secondary" id="clearHistory" style="padding:6px 10px;font-size:11px">Clear</button></div>
+    <div id="history" class="empty">Your results will appear here during this session.</div>
+  </section>
 
-<section id="account" class="panel">
-  <h2>Username Intelligence</h2>
-  <p class="help">Search public web results across multiple platforms. Results are search links, not verified account matches.</p>
-  <form data-api="/api/account" data-kind="account">
-    <input name="username" placeholder="username or @username" maxlength="64" required>
-    <button class="primary">Search accounts</button>
-  </form>
-  <div class="results"></div>
-</section>
+  <section class="view" id="view-accounts">
+    <div class="card"><div class="eyebrow">PUBLIC PROFILE DISCOVERY</div><h2 style="margin:5px 0 14px;font-size:18px">Username search</h2><div class="searchrow"><input class="field" id="username" placeholder="e.g. example_username"><button class="btn" onclick="runUsername()">Search profiles</button></div><div id="usernameOut" class="output"></div><div class="notice">Platform responses can be blocked or generic. A reachable URL does not prove an account exists.</div></div>
+  </section>
 
-<section id="domain" class="panel hidden">
-  <h2>Domain Intelligence</h2>
-  <p class="help">Resolve public DNS records and find publicly routable IP addresses.</p>
-  <form data-api="/api/domain" data-kind="json">
-    <input name="domain" placeholder="example.com" maxlength="253" required>
-    <button class="primary">Analyze domain</button>
-  </form>
-  <div class="results"></div>
-</section>
+  <section class="view" id="view-email">
+    <div class="card"><div class="eyebrow">EMAIL DOMAIN INTELLIGENCE</div><h2 style="margin:5px 0 14px;font-size:18px">Email OSINT</h2><div class="searchrow"><input class="field" id="email" type="email" placeholder="name@example.com"><button class="btn" onclick="runEmail()">Check email</button></div><div id="emailOut" class="output"></div><div class="notice">This checks syntax and domain DNS. It does not verify mailbox ownership or reveal private account registrations.</div></div>
+  </section>
 
-<section id="email" class="panel hidden">
-  <h2>Email Analysis</h2>
-  <p class="help">Check email syntax and whether its domain publishes mail-routing records. This does not verify the mailbox or identify its owner.</p>
-  <form data-api="/api/email" data-kind="json">
-    <input name="email" type="email" placeholder="user@example.com" maxlength="254" required>
-    <button class="primary">Check email</button>
-  </form>
-  <div class="results"></div>
-</section>
+  <section class="view" id="view-domain">
+    <div class="card"><div class="eyebrow">PASSIVE / LOW-IMPACT WEB CHECKS</div><h2 style="margin:5px 0 14px;font-size:18px">Domain vulnerability assessment</h2><div class="searchrow"><input class="field" id="domain" placeholder="example.com"><button class="btn" onclick="runDomain()">Scan domain</button></div><div id="domainOut" class="output"></div><div class="notice">Checks DNS resolution, HTTPS/TLS connection, selected security headers, and response cookie flags. Findings are indicators for review, not proof of exploitability.</div></div>
+  </section>
 
-<section id="geo" class="panel hidden">
-  <h2>IP Geolocation</h2>
-  <p class="help">Look up approximate public IP location, network provider and coordinates.</p>
-  <form data-api="/api/geolocate" data-kind="json">
-    <input name="ip" placeholder="Public IP address" maxlength="45" required>
-    <button class="primary">Locate IP</button>
-  </form>
-  <div class="results"></div>
-</section>
+  <section class="view" id="view-ip">
+    <div class="card"><div class="eyebrow">PUBLIC IP INTELLIGENCE</div><h2 style="margin:5px 0 14px;font-size:18px">IP geolocation</h2><div class="searchrow"><input class="field" id="ip" placeholder="e.g. 1.1.1.1"><button class="btn" onclick="runIP()">Lookup IP</button></div><div id="ipOut" class="output"></div></div>
+  </section>
 
-<section id="vuln" class="panel hidden">
-  <h2>Security Assessment</h2>
-  <p class="help">Checks HTTPS usage and common security headers using a limited, non-destructive request. Scan only systems you own or have permission to test.</p>
-  <form data-api="/api/vulnerability" data-kind="vuln">
-    <input name="url" placeholder="https://your-domain.com" maxlength="2048" required>
-    <button class="primary">Run checks</button>
-  </form>
-  <div class="results"></div>
-</section>
+  <section class="view" id="view-social">
+    <div class="card"><div class="eyebrow">ACCOUNT & INTEGRATION SECURITY</div><h2 style="margin:5px 0 8px;font-size:18px">Social security audit</h2><p class="sub">Mark the protections you've verified in the official app or in your own integration.</p>
+      <div class="formgrid" style="margin-top:16px"><div class="formrow"><label>Platform</label><select class="field" id="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="discord">Discord</option><option value="reddit">Reddit</option><option value="x">X</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="github">GitHub</option><option value="own_app">My own app / API</option></select></div></div>
+      <div class="checklist">
+        <label class="check"><input type="checkbox" name="privacy_reviewed">Reviewed profile visibility and discoverability settings</label>
+        <label class="check"><input type="checkbox" name="mfa_enabled">Multi-factor authentication enabled</label>
+        <label class="check"><input type="checkbox" name="recovery_secure">Recovery email and phone are protected</label>
+        <label class="check"><input type="checkbox" name="sessions_reviewed">Reviewed active sessions and unknown devices</label>
+        <label class="check"><input type="checkbox" name="connected_apps_reviewed">Reviewed connected apps and OAuth permissions</label>
+        <label class="check"><input type="checkbox" name="unique_password">Unique password stored securely</label>
+        <label class="check"><input type="checkbox" name="alerts_enabled">Security/login alerts enabled</label>
+        <label class="check"><input type="checkbox" name="public_info_minimized">Minimized unnecessary public personal information</label>
+      </div>
+      <div style="margin-top:14px"><button class="btn" onclick="runSocialAudit()">Generate audit</button></div><div id="socialOut" class="output"></div>
+      <div class="notice">This is a user-guided account checklist. Direct platform vulnerability tests require authorized test accounts, APIs, or an environment you control.</div>
+    </div>
+  </section>
 
-<div id="status" role="status" aria-live="polite">Ready.</div>
-<button id="export" type="button">Export last report as JSON</button>
-<footer>
-  SocialScope is an educational public-web research tool. Public search results
-  may be incomplete or outdated. No private account access is provided.
-  IP locations are approximate. Security findings require manual verification.
-</footer>
+  <section class="view" id="view-proxy">
+    <div class="card"><div class="eyebrow">NETWORK ROUTING CHECK</div><h2 style="margin:5px 0 8px;font-size:18px">Proxy verification</h2><p class="sub">Use a proxy endpoint you control or are authorized to use.</p><div class="formgrid" style="margin-top:14px"><div class="formrow full"><label>Proxy URL</label><input class="field" id="proxy" placeholder="http://host:port or socks5h://host:port"></div><div class="full"><button class="btn" onclick="runProxy()">Test connection</button></div></div><div id="proxyOut" class="output"></div><div class="notice">The request originates from the deployed server. This does not route traffic from your phone or isolate each mobile browser profile. SOCKS proxies may require installing the PySocks dependency.</div></div>
+  </section>
+
+  <section class="view" id="view-graph">
+    <div class="card"><div class="eyebrow">INVESTIGATION OUTPUT</div><h2 style="margin:5px 0 8px;font-size:18px">Graph & reports</h2><p class="sub">Results from this browser session are shown below. Export individual results as JSON.</p><div id="reportList" class="output"><div class="empty">Run a tool to add results to this session.</div></div><div style="margin-top:14px"><button class="btn secondary" onclick="exportAll()">Export session JSON</button></div><div class="notice">Relationship graphs can only be evidence-based. This starter stores the results you run in this session; it does not infer that matching usernames belong to the same person.</div></div>
+  </section>
+  <footer>SocialScope · Public-web analysis · Results depend on source availability and network access.</footer>
 </main>
-
+</div>
 <script>
-let lastReport = null;
-
-document.querySelectorAll("#tabs button").forEach(button => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll("#tabs button").forEach(b =>
-      b.classList.toggle("active", b === button)
-    );
-    document.querySelectorAll("main section").forEach(section =>
-      section.classList.toggle("hidden", section.id !== button.dataset.tab)
-    );
-    document.getElementById("status").textContent = "Ready.";
-  });
-});
-
-function addText(parent, tag, value) {
-  const el = document.createElement(tag);
-  el.textContent = value == null ? "" :
-    typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
-  parent.appendChild(el);
-  return el;
-}
-
-function renderAccount(container, data) {
-  data.results.forEach(result => {
-    const item = document.createElement("article");
-    item.className = "item";
-    addText(item, "h3", result.platform);
-    addText(item, "p", result.note);
-    const link = document.createElement("a");
-    link.href = result.search_url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Open public search";
-    item.appendChild(link);
-    container.appendChild(item);
-  });
-  addText(container, "p", data.notice);
-}
-
-function renderVulnerabilities(container, data) {
-  addText(container, "p", "HTTP status: " + data.http_status);
-  addText(container, "p", "Target: " + data.target);
-  data.findings.forEach(f => {
-    const item = document.createElement("article");
-    item.className = "item";
-    addText(item, "h3", f.severity + " — " + f.title);
-    addText(item, "p", "Evidence: " + f.evidence);
-    addText(item, "p", "Fix: " + f.recommendation);
-    container.appendChild(item);
-  });
-  addText(container, "p", data.disclaimer);
-}
-
-document.querySelectorAll("form[data-api]").forEach(form => {
-  form.addEventListener("submit", async event => {
-    event.preventDefault();
-    const container = form.parentElement.querySelector(".results");
-    const status = document.getElementById("status");
-    container.replaceChildren();
-    status.textContent = "Working…";
-
-    const values = Object.fromEntries(new FormData(form).entries());
-    try {
-      const response = await fetch(form.dataset.api, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(values)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Request failed.");
-
-      lastReport = data;
-      if (form.dataset.kind === "account") renderAccount(container, data);
-      else if (form.dataset.kind === "vuln") renderVulnerabilities(container, data);
-      else {
-        const pre = document.createElement("pre");
-        pre.textContent = JSON.stringify(data, null, 2);
-        container.appendChild(pre);
-      }
-      status.textContent = "Finished.";
-    } catch (err) {
-      status.textContent = "Error: " + err.message;
-    }
-  });
-});
-
-document.getElementById("export").addEventListener("click", () => {
-  if (!lastReport) {
-    document.getElementById("status").textContent = "Run a search first.";
-    return;
-  }
-  const blob = new Blob([JSON.stringify(lastReport, null, 2)], {
-    type: "application/json"
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "socialscope-report.json";
-  link.click();
-  URL.revokeObjectURL(url);
-});
-</script>
-</body>
-      </html>
+const historyItems=[];
+const titles={dashboard:"Investigation dashboard",accounts:"Username search",email:"Email OSINT",domain:"Domain scanner",ip:"IP intelligence",social:"Social security audit",proxy:"Proxy verification",graph:"Graph & reports"};
+function go(name){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+name));document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));document.getElementById("pageTitle").textContent=titles[name]||"SocialScope";document.getElementById("crumb").textContent=(name||"dashboard").toUpperCase();window.scrollTo({top:0,behavior:"smooth"});}
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+async function api(path,data){const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});let result;try{result=await response.json()}catch{result={error:"Server returned an unreadable response."}}if(!response.ok)throw new Error(result.error||"Request failed.");return result;}
+function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function btnJSON(obj){return `<button class="btn secondary" style="padding:6px 9px;font-size:10px" onclick='downloadObject(${JSON.stringify(obj).replace(/</g,"\\u003c")})'>Export JSON</button>`;}
+function downloadObject(obj){const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="socialscope-report.json";a.click();URL.revokeObjectURL(a.href);}
+function remember(label,data){historyItems.unshift({label,at:new Date().toISOString(),data});renderHistory();renderReports();}
+function renderHistory(){const el=document.getElementById("history");if(!historyItems.length){el.className="empty";el.textContent="Your results will appear here during this session.";return;}el.className="output";el.innerHTML=historyItems.slice(0,6).map(x=>`<div class="result"><div class="resulthead"><strong>${esc(x.label)}</strong><span class="muted" style="font-size:10px">${new Date(x.at).toLocaleTimeString()}</span></div><button class="btn secondary" style="padding:6px 9px;font-size:10px" onclick='downloadObject(${JSON.stringify(x.data).replace(/</g,"\\u003c")})'>Export JSON</button></div>`).join("");}
+function renderReports(){const el=document.getElementById("reportList");if(!historyItems.length){el.innerHTML='<div class="empty">Run a tool to add results to this session.</div>';return;}el.innerHTML=historyItems.map((x,i)=>`<div class="result"><div class="resulthead"><strong>${esc(x.label)}</strong><span class="pill">${i+1}</span></div><div class="muted" style="font-size:11px">${esc(x.at)}</div><div style="margin-top:9px">${btnJSON(x.data)}</div></div>`).join("");}
+function showError(id,error){document.getElementById(id).innerHTML=`<div class="result"><span class="pill high">ERROR</span><p style="margin-top:8px">${esc(error.message||error)}</p></div>`;}
+function showRaw(id,obj){document.getElementById(id).innerHTML=`<div class="result"><div class="resulthead"><strong>Assessment result</strong><span class="pill pass">COMPLETE</span></div><pre class="pre">${esc(JSON.stringify(obj,null,2))}</pre>${btnJSON(obj)}</div>`;}
+async function runUsername(){const username=document.getElementById("username").value.trim();const out=document.getElementById("usernameOut");out.innerHTML='<div class="loading">Checking public profile URLs…</div>';try{const d=await api("/api/username-search",{username});out.innerHTML=d.results.map(r=>`<div class="result"><div class="resulthead"><strong>${esc(r.platform)}</strong><span class="pill ${r.status==="reachable"?"pass":"medium"}">${esc(r.status.replace("_"," ").toUpperCase())}</span></div><a href="${esc(r.url)}" target="_blank" rel="n
