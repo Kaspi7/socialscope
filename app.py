@@ -16,6 +16,7 @@ app.config["JSON_SORT_KEYS"] = False
 TIMEOUT = 8
 USER_AGENT = "SocialScope/1.0 (public security assessment)"
 
+
 PLATFORMS = {
     "Instagram": "https://www.instagram.com/{username}/",
     "Facebook": "https://www.facebook.com/{username}",
@@ -25,7 +26,14 @@ PLATFORMS = {
     "GitHub": "https://github.com/{username}",
     "YouTube": "https://www.youtube.com/@{username}",
     "Pinterest": "https://www.pinterest.com/{username}/",
+    "Discord (public search)": "https://www.google.com/search?q=site%3Adiscord.com%2Fusers+%22{username}%22",
+    "Telegram": "https://t.me/{username}",
+    "Twitch": "https://www.twitch.tv/{username}",
+    "LinkedIn": "https://www.linkedin.com/in/{username}/",
+    "Snapchat": "https://www.snapchat.com/add/{username}",
+    "Threads": "https://www.threads.net/@{username}",
 }
+
 
 def now():
     return datetime.now(timezone.utc).isoformat()
