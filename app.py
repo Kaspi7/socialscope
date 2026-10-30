@@ -1,6 +1,7 @@
+import csv
+import io
 import ipaddress
 import json
-import os
 import re
 import socket
 import ssl
@@ -8,345 +9,355 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, Response
+from werkzeug.exceptions import RequestEntityTooLarge
+
+try:
+    import dns.resolver
+except ImportError:
+    dns = None
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 app.config["JSON_SORT_KEYS"] = False
-TIMEOUT = 8
-USER_AGENT = "SocialScope/1.0 (public security assessment)"
 
+HTTP = requests.Session()
+HTTP.headers.update({
+    "User-Agent": "SocialScope/1.0 (passive public-information research)"
+})
+TIMEOUT = 8
 
 PLATFORMS = {
     "Instagram": "https://www.instagram.com/{username}/",
     "Facebook": "https://www.facebook.com/{username}",
+    "Discord": "https://discord.com/users/{username}",
+    "Reddit": "https://www.reddit.com/user/{username}/",
     "X": "https://x.com/{username}",
     "TikTok": "https://www.tiktok.com/@{username}",
-    "Reddit": "https://www.reddit.com/user/{username}/",
-    "GitHub": "https://github.com/{username}",
     "YouTube": "https://www.youtube.com/@{username}",
-    "Pinterest": "https://www.pinterest.com/{username}/",
-    "Discord (public search)": "https://www.google.com/search?q=site%3Adiscord.com%2Fusers+%22{username}%22",
-    "Telegram": "https://t.me/{username}",
+    "GitHub": "https://github.com/{username}",
     "Twitch": "https://www.twitch.tv/{username}",
-    "LinkedIn": "https://www.linkedin.com/in/{username}/",
-    "Snapchat": "https://www.snapchat.com/add/{username}",
-    "Threads": "https://www.threads.net/@{username}",
+    "Pinterest": "https://www.pinterest.com/{username}/",
+    "Steam": "https://steamcommunity.com/id/{username}",
+    "Medium": "https://medium.com/@{username}",
 }
 
+def result(module, target, summary, findings=None, links=None, metadata=None):
+    return {
+        "module": module,
+        "target": target,
+        "summary": summary,
+        "findings": findings or [],
+        "links": links or [],
+        "metadata": metadata or {},
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
-def now():
-    return datetime.now(timezone.utc).isoformat()
+def finding(title, severity, evidence, recommendation, confidence="medium"):
+    return {
+        "title": title,
+        "severity": severity,
+        "evidence": evidence,
+        "recommendation": recommendation,
+        "confidence": confidence
+    }
 
-def clean_username(value):
-    value = str(value or "").strip().lstrip("@")
-    if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", value):
-        raise ValueError("Enter a username using letters, numbers, dots, underscores, or hyphens.")
+def clean_domain(value):
+    value = (value or "").strip()
+    if not value or len(value) > 253 or any(c in value for c in "/?#@"):
+        raise ValueError("Enter a domain name only, such as example.com.")
+    value = value.lower().rstrip(".")
+    if value.startswith("http://") or value.startswith("https://"):
+        raise ValueError("Enter the hostname only, without http:// or https://.")
+    if not re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))+", value):
+        raise ValueError("That does not look like a valid public domain.")
     return value
 
-def normalize_domain(value):
-    value = str(value or "").strip()
-    if "://" in value:
-        parsed = urlparse(value)
-        value = parsed.hostname or ""
-    else:
-        value = value.split("/")[0].split(":")[0]
-    value = value.strip(".").lower()
-    if not value or len(value) > 253 or "." not in value:
-        raise ValueError("Enter a valid domain name, such as example.com.")
-    if not re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", value):
-        raise ValueError("The domain format is invalid.")
-    return value
-
-def safe_public_ip(value):
+def resolve_public_host(host):
     try:
-        ip = ipaddress.ip_address(str(value or "").strip())
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise ValueError("The domain could not be resolved.")
+    addresses = sorted({item[4][0] for item in infos})
+    if not addresses:
+        raise ValueError("No IP addresses were returned for this domain.")
+    for address in addresses:
+        ip = ipaddress.ip_address(address)
+        if not ip.is_global:
+            raise ValueError("The target resolves to a private or non-public address. This tool only checks public hosts.")
+    return addresses
+
+def normalize_public_ip(value):
+    try:
+        ip = ipaddress.ip_address((value or "").strip())
     except ValueError:
         raise ValueError("Enter a valid IPv4 or IPv6 address.")
     if not ip.is_global:
-        raise ValueError("Use a public IP address.")
+        raise ValueError("Private, loopback, link-local and reserved IP addresses are not supported.")
     return str(ip)
 
-def get_url(url):
-    headers = {"User-Agent": USER_AGENT}
-    try:
-        response = requests.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True)
-        return response
-    except requests.RequestException as exc:
-        return {"error": str(exc)[:220]}
+def safe_fetch(url, allow_redirects=False):
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Only valid HTTP/HTTPS URLs are supported.")
+    resolve_public_host(parsed.hostname)
+    return HTTP.get(url, timeout=TIMEOUT, allow_redirects=allow_redirects, stream=False)
 
 @app.get("/")
 def home():
     return render_template("index.html")
 
-@app.get("/health")
+@app.get("/api/health")
 def health():
-    return jsonify({"status": "ok", "app": "SocialScope", "time": now()})
+    return jsonify({"status": "ok", "service": "SocialScope", "version": "1.0"})
 
-@app.post("/api/username-search")
-def username_search():
+@app.post("/api/username")
+def api_username():
     data = request.get_json(silent=True) or {}
+    username = (data.get("target") or "").strip().lstrip("@")
+    selected = data.get("platforms") or list(PLATFORMS.keys())
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,40}", username):
+        return jsonify({"error": "Use a username containing 1–40 letters, numbers, dots, underscores or hyphens."}), 400
+    links = []
+    for platform in selected:
+        if platform in PLATFORMS:
+            links.append({"label": platform, "url": PLATFORMS[platform].format(username=username)})
+    if not links:
+        return jsonify({"error": "Select at least one supported platform."}), 400
+    findings = [finding(
+        "Public profile discovery links generated",
+        "info",
+        "These are direct public profile URLs. A generated link does not prove that an account exists.",
+        "Open each result and verify it manually. Respect each platform's terms and privacy settings.",
+        "high"
+    )]
+    return jsonify(result("Username search", username, f"Generated {len(links)} public profile links. Account existence has not been verified.", findings, links,
+                          {"platforms_checked": [x["label"] for x in links], "verification": "manual"}))
 
+@app.post("/api/domain")
+def api_domain():
+    data = request.get_json(silent=True) or {}
     try:
-        username = clean_username(data.get("username"))
+        domain = clean_domain(data.get("target"))
+        ips = resolve_public_host(domain)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    selected = str(data.get("platform") or "all").strip().lower()
+    findings, links, meta = [], [], {"resolved_ips": ips}
+    records = {}
+    try:
+        records["A/AAAA"] = ips
+    except Exception:
+        pass
 
-    platform_lookup = {
-        name.lower(): name for name in PLATFORMS
-    }
-
-    if selected == "all":
-        targets = PLATFORMS.items()
-    elif selected in platform_lookup:
-        name = platform_lookup[selected]
-        targets = [(name, PLATFORMS[name])]
+    if dns:
+        for record_type in ("MX", "NS", "TXT"):
+            try:
+                answers = dns.resolver.resolve(domain, record_type, lifetime=4)
+                records[record_type] = [str(x).strip('"') for x in answers][:20]
+            except Exception:
+                records[record_type] = []
     else:
-        return jsonify({
-            "error": "Unknown platform.",
-            "available": list(PLATFORMS.keys())
-        }), 400
+        records["DNS note"] = ["Install dnspython to enable MX, NS and TXT lookups."]
 
-    results = []
+    links.append({"label": "WHOIS lookup", "url": f"https://lookup.icann.org/en/lookup?name={domain}"})
+    links.append({"label": "Certificate transparency", "url": f"https://crt.sh/?q=%25.{domain}"})
 
-    for platform, template in targets:
-        url = template.format(username=username)
-        result = get_url(url)
-
-        if isinstance(result, dict):
-            results.append({
-                "platform": platform,
-                "url": url,
-                "status": "unreachable",
-                "http_status": None
-            })
-            continue
-
-        code = result.status_code
-
-        results.append({
-            "platform": platform,
-            "url": url,
-            "status": "reachable" if code < 400 else "not_confirmed",
-            "http_status": code
-        })
-
-    return jsonify({
-        "username": username,
-        "platform": selected,
-        "checked_at": now(),
-        "results": results
-    })
-        
-@app.post("/api/domain-scan")
-def domain_scan():
-    data = request.get_json(silent=True) or {}
-    try:
-        domain = normalize_domain(data.get("domain"))
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
-
-    findings = []
-    result = {"domain": domain, "checked_at": now(), "dns": {}, "https": {}, "findings": findings}
-    try:
-        infos = socket.getaddrinfo(domain, None, type=socket.SOCK_STREAM)
-        ips = sorted({item[4][0] for item in infos})
-        result["dns"]["addresses"] = ips
-        findings.append({"severity": "info", "title": "DNS resolution succeeded", "detail": f"Resolved to {len(ips)} address(es)."})
-    except socket.gaierror:
-        result["dns"]["addresses"] = []
-        findings.append({"severity": "high", "title": "DNS resolution failed", "detail": "The domain did not resolve from this server."})
-        return jsonify(result)
+    findings.append(finding("DNS resolution completed", "info", ", ".join(ips),
+                             "Review the resolved addresses and confirm they belong to the expected hosting provider.", "high"))
 
     for scheme in ("https", "http"):
-        url = f"{scheme}://{domain}"
-        response = get_url(url)
-        if isinstance(response, dict):
-            result[scheme] = {"reachable": False, "error": response["error"]}
-            continue
-        headers = {k.lower(): v for k, v in response.headers.items()}
-        result[scheme] = {
-            "reachable": True,
-            "final_url": response.url,
-            "status_code": response.status_code,
-            "headers": {
-                "strict-transport-security": headers.get("strict-transport-security"),
-                "content-security-policy": headers.get("content-security-policy"),
-                "x-content-type-options": headers.get("x-content-type-options"),
-                "x-frame-options": headers.get("x-frame-options"),
-                "referrer-policy": headers.get("referrer-policy"),
-                "permissions-policy": headers.get("permissions-policy"),
-            },
-            "cookies": response.headers.get("Set-Cookie", "")
-        }
-        if scheme == "https":
-            checks = [
-                ("strict-transport-security", "HSTS header missing", "medium"),
-                ("content-security-policy", "Content-Security-Policy header missing", "low"),
-                ("x-content-type-options", "X-Content-Type-Options header missing", "low"),
-                ("referrer-policy", "Referrer-Policy header missing", "low"),
-            ]
-            for header, title, severity in checks:
-                if not headers.get(header):
-                    findings.append({"severity": severity, "title": title, "detail": f"The HTTPS response did not include {header}."})
-            cookie_header = response.headers.get("Set-Cookie", "")
-            if cookie_header:
-                lower = cookie_header.lower()
-                if "secure" not in lower:
-                    findings.append({"severity": "medium", "title": "Cookie Secure attribute may be missing", "detail": "At least one Set-Cookie response header was observed without a Secure attribute. Review each cookie individually."})
-                if "httponly" not in lower:
-                    findings.append({"severity": "low", "title": "Cookie HttpOnly attribute may be missing", "detail": "At least one Set-Cookie response header was observed without an HttpOnly attribute. Review each cookie individually."})
-        if scheme == "http" and response.status_code < 400 and not str(response.url).startswith("https://"):
-            findings.append({"severity": "medium", "title": "HTTP endpoint did not visibly redirect to HTTPS", "detail": "The HTTP request ended without an HTTPS final URL."})
-
-    try:
-        context = ssl.create_default_context()
-        with socket.create_connection((domain, 443), timeout=TIMEOUT) as sock:
-            with context.wrap_socket(sock, server_hostname=domain) as tls:
-                cert = tls.getpeercert()
-                result["tls"] = {
-                    "version": tls.version(),
-                    "subject": dict(x[0] for x in cert.get("subject", [])),
-                    "issuer": dict(x[0] for x in cert.get("issuer", [])),
-                    "not_after": cert.get("notAfter"),
+        try:
+            response = safe_fetch(f"{scheme}://{domain}/")
+            headers = {k.lower(): v for k, v in response.headers.items()}
+            meta[f"{scheme}_status"] = response.status_code
+            meta[f"{scheme}_headers"] = dict(response.headers)
+            if scheme == "https":
+                security_headers = {
+                    "strict-transport-security": ("HSTS header missing", "Configure Strict-Transport-Security after confirming HTTPS works."),
+                    "content-security-policy": ("Content Security Policy missing", "Add a restrictive Content-Security-Policy appropriate for the site."),
+                    "x-content-type-options": ("X-Content-Type-Options missing", "Set X-Content-Type-Options: nosniff."),
+                    "referrer-policy": ("Referrer-Policy missing", "Set a suitable Referrer-Policy, such as strict-origin-when-cross-origin."),
+                    "permissions-policy": ("Permissions-Policy missing", "Set a Permissions-Policy that disables browser features the site does not need.")
                 }
-                findings.append({"severity": "info", "title": "TLS handshake succeeded", "detail": f"Negotiated {tls.version()}."})
-    except Exception as exc:
-        result["tls"] = {"error": str(exc)[:180]}
-        findings.append({"severity": "high", "title": "TLS connection could not be verified", "detail": "The scanner could not complete a verified TLS connection on port 443."})
+                for header, (title, fix) in security_headers.items():
+                    if header not in headers:
+                        findings.append(finding(title, "low", f"HTTPS response did not include {header}.", fix, "high"))
+                if response.url.startswith("http://"):
+                    findings.append(finding("HTTPS request ended on HTTP", "high",
+                                             "The request was redirected or resolved to an HTTP URL.",
+                                             "Force HTTPS and review redirect configuration.", "medium"))
+                cookies = response.headers.get("Set-Cookie", "")
+                if cookies:
+                    lower = cookies.lower()
+                    if "secure" not in lower:
+                        findings.append(finding("Cookie without Secure attribute observed", "medium",
+                                                 "At least one Set-Cookie response did not show the Secure attribute.",
+                                                 "Set Secure on cookies that should only travel over HTTPS.", "medium"))
+                    if "httponly" not in lower:
+                        findings.append(finding("Cookie without HttpOnly attribute observed", "low",
+                                                 "At least one Set-Cookie response did not show HttpOnly.",
+                                                 "Set HttpOnly on session cookies that do not require JavaScript access.", "medium"))
+            break
+        except requests.RequestException as exc:
+            meta[f"{scheme}_error"] = str(exc)[:180]
+        except ValueError as exc:
+            meta[f"{scheme}_error"] = str(exc)
 
-    result["summary"] = {
-        "findings": len([f for f in findings if f["severity"] != "info"]),
-        "high": sum(f["severity"] == "high" for f in findings),
-        "medium": sum(f["severity"] == "medium" for f in findings),
-        "low": sum(f["severity"] == "low" for f in findings),
-    }
-    return jsonify(result)
+    if "https_status" not in meta and "http_status" not in meta:
+        findings.append(finding("Website could not be fetched", "info",
+                                 "DNS resolved, but the HTTP(S) endpoint did not return a response to this checker.",
+                                 "Check whether the site is online and whether it blocks automated requests.", "medium"))
 
-@app.post("/api/ip-lookup")
-def ip_lookup():
+    meta["dns_records"] = records
+    return jsonify(result("Domain intelligence", domain, f"Resolved {len(ips)} public address(es) and completed passive HTTP checks.", findings, links, meta))
+
+@app.post("/api/ip")
+def api_ip():
     data = request.get_json(silent=True) or {}
     try:
-        ip = safe_public_ip(data.get("ip"))
+        ip = normalize_public_ip(data.get("target"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     try:
-        response = requests.get(f"https://ipwho.is/{ip}", timeout=TIMEOUT, headers={"User-Agent": USER_AGENT})
+        response = HTTP.get(f"https://ipwho.is/{ip}", timeout=TIMEOUT)
         payload = response.json()
-        if not payload.get("success", True):
-            return jsonify({"error": payload.get("message", "IP lookup failed.")}), 502
-        return jsonify({
-            "ip": ip,
-            "checked_at": now(),
-            "country": payload.get("country"),
-            "region": payload.get("region"),
-            "city": payload.get("city"),
-            "latitude": payload.get("latitude"),
-            "longitude": payload.get("longitude"),
-            "connection": payload.get("connection", {}),
-            "timezone": payload.get("timezone", {}),
-            "note": "IP geolocation is approximate and does not identify a person's exact location."
-        })
+        if not payload.get("success", False):
+            return jsonify({"error": payload.get("message", "IP geolocation provider did not return a result.")}), 502
+        connection = payload.get("connection") or {}
+        info = {
+            "ip": ip, "type": payload.get("type"), "continent": payload.get("continent"),
+            "country": payload.get("country"), "region": payload.get("region"),
+            "city": payload.get("city"), "latitude": payload.get("latitude"),
+            "longitude": payload.get("longitude"), "isp": connection.get("isp"),
+            "organization": connection.get("org"), "asn": connection.get("asn")
+        }
+        f = finding("Approximate IP geolocation retrieved", "info",
+                    f"{info.get('city') or 'Unknown'}, {info.get('country') or 'Unknown'}; ISP: {info.get('isp') or 'Unknown'}.",
+                    "Treat IP geolocation as an estimate. It identifies a network endpoint, not a person's exact location.", "medium")
+        return jsonify(result("IP intelligence", ip, "Public IP metadata retrieved.", [f], [], info))
     except (requests.RequestException, ValueError) as exc:
-        return jsonify({"error": f"IP lookup failed: {str(exc)[:180]}"}), 502
+        return jsonify({"error": f"Geolocation lookup failed: {str(exc)[:160]}"}), 502
 
-@app.post("/api/email-check")
-def email_check():
+@app.post("/api/email")
+def api_email():
     data = request.get_json(silent=True) or {}
-    email = str(data.get("email") or "").strip()
-    if len(email) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+    email = (data.get("target") or "").strip()
+    if len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         return jsonify({"error": "Enter a valid email address."}), 400
     domain = email.rsplit("@", 1)[1].lower()
-    result = {"email": email, "domain": domain, "checked_at": now(), "syntax_valid": True, "dns": [], "note": "This does not confirm mailbox existence or whether the address has been breached."}
-    try:
-        import dns.resolver
-        for record_type in ("MX", "A", "AAAA"):
-            try:
-                answers = dns.resolver.resolve(domain, record_type, lifetime=TIMEOUT)
-                result["dns"].append({"type": record_type, "records": [str(x) for x in answers]})
-            except Exception:
-                result["dns"].append({"type": record_type, "records": []})
-    except ImportError:
+    findings = [finding("Email syntax is valid", "info", "The address matches a basic email syntax check.",
+                        "Syntax does not prove that the mailbox exists or belongs to a particular person.", "high")]
+    mx = []
+    if dns:
         try:
-            result["dns"].append({"type": "A", "records": sorted({x[4][0] for x in socket.getaddrinfo(domain, None)})})
+            mx = [str(x.exchange).rstrip(".") for x in dns.resolver.resolve(domain, "MX", lifetime=4)]
         except Exception:
-            result["dns"].append({"type": "A", "records": []})
-    return jsonify(result)
+            pass
+    if mx:
+        findings.append(finding("Mail exchange records found", "info", ", ".join(mx),
+                                "MX records indicate that the domain is configured to receive email; they do not verify this mailbox.", "high"))
+    else:
+        findings.append(finding("No MX records returned", "low", "No MX records were returned by the DNS lookup.",
+                                "Check the domain's DNS configuration. Some domains may use fallback mail routing.", "medium"))
+    links = [{"label": "Domain breach exposure search", "url": f"https://haveibeenpwned.com/"}]
+    return jsonify(result("Email intelligence", email, "Completed syntax and domain mail-record checks. No mailbox verification was attempted.",
+                          findings, links, {"domain": domain, "mx_records": mx}))
+
+@app.post("/api/vuln")
+def api_vuln():
+    # Passive web-configuration audit only; no exploit attempts or intrusive scanning.
+    data = request.get_json(silent=True) or {}
+    raw = (data.get("target") or "").strip()
+    if not data.get("authorized"):
+        return jsonify({"error": "Confirm that you own this website or have permission to assess it."}), 403
+    try:
+        domain = clean_domain(raw)
+        ips = resolve_public_host(domain)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    findings = []
+    metadata = {"resolved_ips": ips}
+    try:
+        response = safe_fetch(f"https://{domain}/")
+        headers = {k.lower(): v for k, v in response.headers.items()}
+        metadata.update({"status": response.status_code, "server_header": headers.get("server", "not disclosed")})
+        checks = [
+            ("strict-transport-security", "HSTS not detected", "low", "Enable HSTS after confirming the entire site supports HTTPS."),
+            ("content-security-policy", "CSP not detected", "medium", "Deploy a Content-Security-Policy and test it for compatibility."),
+            ("x-content-type-options", "MIME-sniffing protection not detected", "low", "Set X-Content-Type-Options: nosniff."),
+            ("x-frame-options", "Clickjacking header not detected", "low", "Use X-Frame-Options or CSP frame-ancestors."),
+            ("referrer-policy", "Referrer policy not detected", "low", "Set a privacy-appropriate Referrer-Policy.")
+        ]
+        for header, title, severity, recommendation in checks:
+            if header not in headers and not (header == "x-frame-options" and "frame-ancestors" in headers.get("content-security-policy", "").lower()):
+                findings.append(finding(title, severity, f"Response did not include {header}.", recommendation, "high"))
+        if response.url.startswith("http://"):
+            findings.append(finding("HTTPS downgrade observed", "high", "The final URL uses HTTP.",
+                                     "Configure HTTPS and redirect all HTTP requests to HTTPS.", "medium"))
+        if not findings:
+            findings.append(finding("No tested header gaps detected", "info",
+                                    "The selected passive header checks did not identify missing controls.",
+                                    "This is not a full security assessment and does not establish that the website is secure.", "high"))
+    except (requests.RequestException, ValueError) as exc:
+        return jsonify({"error": f"Passive check failed: {str(exc)[:180]}"}), 502
+    return jsonify(result("Website security audit", domain, f"Completed passive checks on {domain}. No exploit payloads were sent.", findings, [], metadata))
 
 @app.post("/api/social-audit")
-def social_audit():
+def api_social_audit():
     data = request.get_json(silent=True) or {}
-    platform = str(data.get("platform") or "").strip().lower()
-    checks = data.get("checks") or {}
-    if platform not in {"instagram", "facebook", "discord", "reddit", "x", "tiktok", "youtube", "github", "own_app"}:
-        return jsonify({"error": "Choose a supported platform."}), 400
-    checklist = {
-        "privacy_reviewed": "Reviewed profile visibility and discoverability settings",
-        "mfa_enabled": "Multi-factor authentication enabled",
-        "recovery_secure": "Recovery email and phone are current and protected",
-        "sessions_reviewed": "Reviewed active sessions and signed out unknown devices",
-        "connected_apps_reviewed": "Reviewed and removed unneeded connected apps / OAuth grants",
-        "unique_password": "Unique password stored in a password manager",
-        "alerts_enabled": "Login/security alerts enabled where available",
-        "public_info_minimized": "Reduced unnecessary public personal information",
-    }
-    results = []
-    for key, label in checklist.items():
-        checked = bool(checks.get(key))
-        results.append({"id": key, "label": label, "status": "pass" if checked else "review", "detail": "Marked complete by the user." if checked else "Not confirmed; review this setting in the official app or account settings."})
-    completed = sum(item["status"] == "pass" for item in results)
-    return jsonify({
-        "platform": platform,
-        "checked_at": now(),
-        "type": "user-guided account security checklist",
-        "completed": completed,
-        "total": len(results),
-        "results": results,
-        "note": "This is a user-guided checklist, not a direct test of the platform's internal systems."
-    })
-
-@app.post("/api/proxy-check")
-def proxy_check():
-    data = request.get_json(silent=True) or {}
-    proxy = str(data.get("proxy") or "").strip()
-    if not proxy:
-        return jsonify({"error": "Enter a proxy URL."}), 400
-    parsed = urlparse(proxy)
-    if parsed.scheme not in {"http", "https", "socks5", "socks5h"} or not parsed.hostname or not parsed.port:
-        return jsonify({"error": "Use a proxy URL with scheme, host, and port, such as http://host:port."}), 400
-    # Proxy credentials are accepted only in the request and are never written to disk or logged.
+    raw = (data.get("target") or "").strip()
+    if not data.get("authorized"):
+        return jsonify({"error": "Confirm that this is your profile or that you have permission to review it."}), 403
+    if len(raw) > 2048:
+        return jsonify({"error": "URL is too long."}), 400
+    parsed = urlparse(raw if "://" in raw else "https://" + raw)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return jsonify({"error": "Enter a valid public profile URL."}), 400
+    host = parsed.hostname.lower()
+    allowed = any(host == p or host.endswith("." + p) for p in [
+        "instagram.com", "facebook.com", "discord.com", "reddit.com", "x.com",
+        "twitter.com", "tiktok.com", "youtube.com", "github.com", "twitch.tv",
+        "pinterest.com", "steamcommunity.com", "medium.com"
+    ])
+    if not allowed:
+        return jsonify({"error": "Use a public profile URL from a supported social platform."}), 400
+    findings, metadata = [], {"host": host, "privacy_note": "This audit cannot inspect private account settings or platform-internal security."}
     try:
-        response = requests.get(
-            "https://ipwho.is/",
-            proxies={"http": proxy, "https": proxy},
-            timeout=TIMEOUT,
-            headers={"User-Agent": USER_AGENT}
-        )
-        payload = response.json()
-        if response.status_code >= 400 or not payload.get("success", True):
-            return jsonify({"connected": False, "error": "The proxy test endpoint did not return a successful result."}), 502
-        return jsonify({
-            "connected": True,
-            "observed_ip": payload.get("ip"),
-            "country": payload.get("country"),
-            "region": payload.get("region"),
-            "city": payload.get("city"),
-            "checked_at": now(),
-            "note": "This tests a request made by the server through the configured proxy; it does not route your phone or browser traffic through it."
-        })
-    except requests.RequestException as exc:
-        return jsonify({"connected": False, "error": f"Proxy connection failed: {str(exc)[:180]}"}), 502
+        response = safe_fetch(f"{parsed.scheme}://{parsed.netloc}{parsed.path}", allow_redirects=False)
+        metadata["http_status"] = response.status_code
+        metadata["content_type"] = response.headers.get("Content-Type", "unknown")
+        if response.status_code == 200:
+            findings.append(finding("Public profile endpoint responded", "info",
+                                    "The submitted public URL returned HTTP 200. This does not prove account ownership or expose private settings.",
+                                    "Review the profile while logged out to understand what the public can see.", "medium"))
+        elif response.status_code in (301, 302, 303, 307, 308):
+            findings.append(finding("Profile endpoint redirected", "info", f"HTTP {response.status_code} redirect returned.",
+                                    "Open the link in a browser and verify the destination manually.", "medium"))
+        elif response.status_code in (401, 403, 404):
+            findings.append(finding("Profile not publicly readable by this check", "info",
+                                    f"The endpoint returned HTTP {response.status_code}. This may reflect login requirements, anti-bot controls, privacy settings or a missing profile.",
+                                    "Do not attempt to bypass access controls. Review privacy settings through the account's official app.", "medium"))
+        else:
+            findings.append(finding("Profile endpoint returned an unusual status", "info", f"HTTP {response.status_code}.",
+                                    "Verify manually using the platform's official website or app.", "low"))
+    except (requests.RequestException, ValueError) as exc:
+        findings.append(finding("Automated profile request failed", "info", str(exc)[:160],
+                                "The platform may block automated requests. Review the profile manually.", "low"))
+    findings.append(finding("Public-exposure review checklist", "info",
+                            "Check visible bio details, contact links, public posts, tagged content, follower visibility and location disclosures.",
+                            "Remove unnecessary personal details, review audience controls, disable unwanted location sharing and enable two-factor authentication.", "high"))
+    return jsonify(result("Social profile exposure audit", raw, "Completed a limited public-endpoint review. Private settings were not accessed.", findings, [], metadata))
 
-@app.errorhandler(413)
-def too_large(_error):
-    return jsonify({"error": "Request is too large."}), 413
-
-@app.errorhandler(500)
-def server_error(_error):
-    return jsonify({"error": "Internal server error."}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "10000"))
-    app.run(host="0.0.0.0", port=port)
+@app.post("/api/export")
+def export_results():
+    data = request.get_json(silent=True) or {}
+    report = data.get("report")
+    fmt = data.get("format", "json")
+    if not isinstance(report, dict):
+        return jsonify({"error": "No report supplied."}), 400
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", str(report.get("target", "report")))[:50] or "report"
+    if fmt == "csv":
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=["module", "target", "summary", "severity", "finding", "evidence", "recommendation", "timestamp"])
+        write
