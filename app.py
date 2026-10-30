@@ -86,30 +86,60 @@ def health():
 @app.post("/api/username-search")
 def username_search():
     data = request.get_json(silent=True) or {}
+
     try:
         username = clean_username(data.get("username"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
+    selected = str(data.get("platform") or "all").strip().lower()
+
+    platform_lookup = {
+        name.lower(): name for name in PLATFORMS
+    }
+
+    if selected == "all":
+        targets = PLATFORMS.items()
+    elif selected in platform_lookup:
+        name = platform_lookup[selected]
+        targets = [(name, PLATFORMS[name])]
+    else:
+        return jsonify({
+            "error": "Unknown platform.",
+            "available": list(PLATFORMS.keys())
+        }), 400
+
     results = []
-    for platform, template in PLATFORMS.items():
+
+    for platform, template in targets:
         url = template.format(username=username)
         result = get_url(url)
+
         if isinstance(result, dict):
-            results.append({"platform": platform, "url": url, "status": "unreachable", "http_status": None})
+            results.append({
+                "platform": platform,
+                "url": url,
+                "status": "unreachable",
+                "http_status": None
+            })
             continue
+
         code = result.status_code
-        # HTTP status is only a reachability clue, not proof of account existence.
-        state = "reachable" if code < 400 else "not_confirmed"
+
         results.append({
             "platform": platform,
             "url": url,
-            "status": state,
-            "http_status": code,
-            "note": "HTTP status is a reachability signal; platforms may block automated requests or return generic pages."
+            "status": "reachable" if code < 400 else "not_confirmed",
+            "http_status": code
         })
-    return jsonify({"username": username, "checked_at": now(), "results": results})
 
+    return jsonify({
+        "username": username,
+        "platform": selected,
+        "checked_at": now(),
+        "results": results
+    })
+        
 @app.post("/api/domain-scan")
 def domain_scan():
     data = request.get_json(silent=True) or {}
