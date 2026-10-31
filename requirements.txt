@@ -1,4 +1,4 @@
-Flask>=3.0,<4
-requests>=2.31,<3
-dnspython>=2.6,<3
-gunicorn>=22,<24
+Flask==3.1.2
+requests==2.32.5
+dnspython==2.8.0
+gunicorn==23.0.0
